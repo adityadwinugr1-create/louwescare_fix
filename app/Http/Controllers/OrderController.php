@@ -41,17 +41,23 @@ class OrderController extends Controller
     public function show($id)
     {
         $order = Order::with(['customer', 'details'])->findOrFail($id);
-        return view('pesanan.show', compact('order'));
+        
+        // TAMBAHAN: Ambil data treatment untuk ditampilkan di modal klaim reward
+        $treatments = Treatment::orderBy('nama_treatment', 'asc')->get();
+
+        // Tambahkan 'treatments' ke dalam fungsi compact()
+        return view('pesanan.show', compact('order', 'treatments'));
     }
 
     /**
-     * UPDATE DATA UTAMA (Untuk Pop-up Edit di Index)
+     * UPDATE DATA UTAMA & DETAIL PESANAN
      */
     public function update(Request $request, $id)
     {
         $request->validate([
             'nama_customer' => 'required|string',
             'status' => 'required|string',
+            'details' => 'array' // Menerima data rincian pesanan
         ]);
 
         try {
@@ -59,19 +65,47 @@ class OrderController extends Controller
             
             $order = Order::findOrFail($id);
             
-            // 1. Update Data Order
+            // 1. Update Data Utama Order
             $order->status_order = $request->status;
             $order->catatan = $request->catatan; 
-            $order->save();
-
+            
+            // FITUR BARU: Simpan data CS Keluar dari dropdown
+            $order->kasir_keluar = $request->kasir_keluar; 
+            
             // 2. Update Nama Customer
             if ($order->customer) {
                 $order->customer->nama = $request->nama_customer;
                 $order->customer->save();
             }
 
+            // 3. Update Rincian Layanan ke Database
+            if ($request->has('details')) {
+                $totalHargaBaru = 0;
+
+                foreach ($request->details as $detailId => $data) {
+                    $detail = OrderDetail::find($detailId);
+                    
+                    // Pastikan detail ada dan milik order yang benar
+                    if ($detail && $detail->order_id == $order->id) {
+                        $detail->nama_barang = $data['nama_barang'] ?? $detail->nama_barang;
+                        $detail->layanan = $data['layanan'] ?? $detail->layanan;
+                        $detail->estimasi_keluar = $data['estimasi_keluar'] ?? $detail->estimasi_keluar;
+                        $detail->status = $data['status'] ?? $detail->status;
+                        $detail->harga = (int) ($data['harga'] ?? $detail->harga);
+                        $detail->save();
+
+                        $totalHargaBaru += $detail->harga; // Hitung ulang total
+                    }
+                }
+
+                // Simpan total harga yang baru
+                $order->total_harga = $totalHargaBaru;
+            }
+
+            $order->save();
+
             DB::commit();
-            return back()->with('success', 'Data pesanan berhasil diperbarui.');
+            return back()->with('success', 'Rincian pesanan berhasil diperbarui di database.');
 
         } catch (\Exception $e) {
             DB::rollBack();

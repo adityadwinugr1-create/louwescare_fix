@@ -1,3 +1,4 @@
+<?php
 <x-app-layout>
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -12,126 +13,123 @@
                 </h2>
             </div>
 
-            {{-- 
-                PENTING: Tag FORM sekarang dipindah ke sini agar membungkus 
-                KARTU KIRI (Catatan) dan KARTU KANAN (Rincian) sekaligus.
-            --}}
-            <form action="{{ route('pesanan.update', $order->id) }}" method="POST">
-                @csrf
-                @method('PATCH')
-
-                {{-- Input Tersembunyi untuk data yang tidak diedit di halaman ini --}}
-                <input type="hidden" name="nama_customer" value="{{ $order->customer->nama ?? $order->nama_customer }}">
-                <input type="hidden" name="status" value="{{ $order->status_order }}">
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    
-                    {{-- KARTU KIRI: Informasi Pelanggan & Status --}}
-                    <div class="col-span-1 space-y-6">
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="p-6 bg-white border-b border-gray-200">
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">Data Pelanggan</h3>
-                                
-                                <dl class="space-y-4 text-sm">
-                                    <div>
-                                        <dt class="text-gray-500">Nama Lengkap</dt>
-                                        <dd class="font-semibold text-gray-900">{{ $order->customer->nama ?? '-' }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt class="text-gray-500">Nomor WhatsApp</dt>
-                                        <dd class="font-semibold text-gray-900 flex items-center gap-2">
-                                            {{ $order->customer->no_hp ?? '-' }}
-                                            @if($order->customer)
-                                                <a href="https://wa.me/{{ preg_replace('/^0/', '62', $order->customer->no_hp) }}" target="_blank" class="text-green-600 hover:text-green-800" title="Hubungi via WhatsApp">
-                                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"></path></svg>
-                                                </a>
-                                            @endif
-                                        </dd>
-                                    </div>
-                                    
-                                    {{-- KOTAK TIPE PELANGGAN & POIN --}}
-                                    <div class="grid grid-cols-2 gap-4 bg-gray-50/50 p-3 rounded-lg border border-gray-100">
-                                        <div>
-                                            <dt class="text-gray-500 text-xs uppercase tracking-wider font-bold mb-1">Tipe Pelanggan</dt>
-                                            <dd>
-                                                <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-bold rounded-full {{ $order->tipe_customer == 'Member' ? 'bg-pink-100 text-pink-800 border border-pink-200' : 'bg-blue-100 text-blue-800 border border-blue-200' }}">
-                                                    {{ $order->tipe_customer }}
-                                                </span>
-                                            </dd>
-                                        </div>
-
-                                        @if($order->customer && $order->customer->member)
-                                        <div>
-                                            <dt class="text-gray-500 text-xs uppercase tracking-wider font-bold mb-1">Poin</dt>
-                                            <dd class="flex items-center gap-2">
-                                                <span class="text-sm font-black text-gray-800">{{ $order->customer->member->poin }}/8</span>
-                                                
-                                                {{-- Tombol Claim Memanggil Modal --}}
-                                                @if($order->customer->member->poin >= 8)
-                                                    <button type="button" onclick="openClaimModal()" 
-                                                        class="bg-green-600 hover:bg-green-700 text-white text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded shadow-sm transition">
-                                                        Claim
-                                                    </button>
-                                                @endif
-                                            </dd>
-                                        </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {{-- KARTU KIRI: Informasi Pelanggan & Status --}}
+                <div class="col-span-1 space-y-6">
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6 bg-white border-b border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Data Pelanggan</h3>
+                            
+                            <dl class="space-y-4 text-sm">
+                                <div>
+                                    <dt class="text-gray-500">Nama Lengkap</dt>
+                                    <dd class="font-semibold text-gray-900">{{ $order->customer->nama ?? '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-gray-500">Nomor WhatsApp</dt>
+                                    <dd class="font-semibold text-gray-900 flex items-center gap-2">
+                                        {{ $order->customer->no_hp ?? '-' }}
+                                        @if($order->customer)
+                                            <a href="https://wa.me/{{ preg_replace('/^0/', '62', $order->customer->no_hp) }}" target="_blank" class="text-green-600 hover:text-green-800" title="Hubungi via WhatsApp">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"></path></svg>
+                                            </a>
                                         @endif
-                                    </div>
-                                </dl>
-                            </div>
-                        </div>
-
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="p-6 bg-white border-b border-gray-200">
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">Status & Info</h3>
-                                <dl class="space-y-3 text-sm">
-                                    {{-- INFO KASIR / CS MASUK --}}
+                                    </dd>
+                                </div>
+                                
+                                {{-- KOTAK TIPE PELANGGAN & POIN (Bersebelahan) --}}
+                                <div class="grid grid-cols-2 gap-4 bg-gray-50/50 p-3 rounded-lg border border-gray-100">
+                                    {{-- Kolom Kiri: Tipe Pelanggan --}}
                                     <div>
-                                        <dt class="text-gray-500">Kasir / CS</dt>
-                                        <dd class="font-semibold text-gray-900 flex items-center gap-1.5 mt-1">
-                                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                            {{ $order->kasir ?? 'Admin / Tidak Diketahui' }}
-                                        </dd>
-                                    </div>
-                                    <div>
-                                        <dt class="text-gray-500">Tanggal Masuk</dt>
-                                        <dd class="font-semibold text-gray-900">{{ $order->created_at->format('d M Y, H:i') }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt class="text-gray-500">Status Order</dt>
+                                        <dt class="text-gray-500 text-xs uppercase tracking-wider font-bold mb-1">Tipe Pelanggan</dt>
                                         <dd>
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                {{ $order->status_order == 'Selesai' ? 'bg-green-100 text-green-800' : 
-                                                  ($order->status_order == 'Proses' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800') }}">
-                                                {{ $order->status_order }}
+                                            <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-bold rounded-full {{ $order->tipe_customer == 'Member' ? 'bg-pink-100 text-pink-800 border border-pink-200' : 'bg-blue-100 text-blue-800 border border-blue-200' }}">
+                                                {{ $order->tipe_customer }}
                                             </span>
                                         </dd>
                                     </div>
-                                    
-                                    {{-- CATATAN SEKARANG BISA DI-EDIT (Textarea) --}}
-                                    <div class="pt-2">
-                                        <dt class="text-gray-500 font-bold mb-1">Catatan</dt>
-                                        <dd>
-                                            <textarea name="catatan" rows="3" 
-                                                class="w-full text-sm bg-gray-50 border border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm transition-all p-2.5" 
-                                                placeholder="Tulis catatan di sini...">{{ $order->catatan ?? '' }}</textarea>
+
+                                    {{-- Kolom Kanan: Poin Member (Hanya muncul jika Member) --}}
+                                    @if($order->customer && $order->customer->member)
+                                    <div>
+                                        <dt class="text-gray-500 text-xs uppercase tracking-wider font-bold mb-1">Poin</dt>
+                                        <dd class="flex items-center gap-2">
+                                            <span class="text-sm font-black text-gray-800">{{ $order->customer->member->poin }}/8</span>
+                                            
+                                            {{-- Tombol Claim Memanggil Modal Baru --}}
+                                            @if($order->customer->member->poin >= 8)
+                                                <button type="button" onclick="openClaimModal()" 
+                                                    class="bg-green-600 hover:bg-green-700 text-white text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded shadow-sm transition">
+                                                    Claim
+                                                </button>
+                                            @endif
                                         </dd>
                                     </div>
-                                </dl>
-                            </div>
+                                    @endif
+                                </div>
+                            </dl>
                         </div>
                     </div>
 
-                    {{-- KARTU KANAN: Detail Item Barang (Bisa Diedit) --}}
-                    <div class="col-span-1 md:col-span-2">
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6 bg-white border-b border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Status & Info</h3>
+                            <dl class="space-y-3 text-sm">
+                                {{-- INFO KASIR / CS MASUK --}}
+                                <div>
+                                    <dt class="text-gray-500">Kasir / CS</dt>
+                                    <dd class="font-semibold text-gray-900 flex items-center gap-1.5 mt-1">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                        {{ $order->kasir ?? 'Admin / Tidak Diketahui' }}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-gray-500">Tanggal Masuk</dt>
+                                    <dd class="font-semibold text-gray-900">{{ $order->created_at->format('d M Y, H:i') }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-gray-500">Status Order</dt>
+                                    <dd>
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                            {{ $order->status_order == 'Selesai' ? 'bg-green-100 text-green-800' : 
+                                              ($order->status_order == 'Proses' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800') }}">
+                                            {{ $order->status_order }}
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-gray-500">Catatan</dt>
+                                    <dd class="text-gray-900 italic bg-gray-50 p-2 rounded border border-gray-100 mt-1">
+                                        "{{ $order->catatan ?? '-' }}"
+                                    </dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- KARTU KANAN: Detail Item Barang (Bisa Diedit) --}}
+                <div class="col-span-1 md:col-span-2">
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        
+                        {{-- FORM UPDATE DATA: Menggunakan fungsi controller yang sama dengan Modal --}}
+                        <form action="{{ route('pesanan.update', $order->id) }}" method="POST">
+                            @csrf
+                            @method('PATCH')
+
+                            {{-- Input Tersembunyi (Wajib ada agar lolos validasi Controller) --}}
+                            <input type="hidden" name="nama_customer" value="{{ $order->customer->nama ?? $order->nama_customer }}">
+                            <input type="hidden" name="status" value="{{ $order->status_order }}">
+                            <input type="hidden" name="catatan" value="{{ $order->catatan }}">
+
                             <div class="p-6 bg-white border-b border-gray-200">
                                 
                                 {{-- HEADER RINCIAN & DROPDOWN CS KELUAR --}}
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
                                     <h3 class="text-lg font-medium text-gray-900">Rincian Layanan</h3>
                                     
-                                    {{-- Dropdown Pilih CS Keluar --}}
+                                    {{-- FITUR BARU: Dropdown Pilih CS Keluar (Font Hitam) --}}
                                     <div class="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
                                         <label for="kasir_keluar" class="text-xs font-bold text-gray-500 uppercase tracking-wider">
                                             CS Keluar:
@@ -215,17 +213,16 @@
                                     </button>
                                 </div>
                             </div>
-                        </div>
+                        </form>
                     </div>
-
                 </div>
-            </form> {{-- END FORM --}}
+            </div>
             
         </div>
     </div>
 
     {{-- ============================================= --}}
-    {{-- MODAL CLAIM REWARD                            --}}
+    {{-- MODAL CLAIM REWARD (DESAIN BARU)              --}}
     {{-- ============================================= --}}
     @if($order->customer && $order->customer->member)
     <div id="modal-claim-reward" 
@@ -306,7 +303,6 @@
         </div>
     </div>
     @endif
-
     {{-- SCRIPT UNTUK MODAL KLAIM REWARD --}}
     <script>
         function openClaimModal() {

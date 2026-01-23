@@ -3,21 +3,24 @@
         ROOT WRAPPER (Wajib ada x-data untuk Alpine.js)
         Ini mengontrol logika Modal Pop-up
     --}}
-    <div x-data="{ 
+        <div x-data="{ 
         showModal: false,
         form: {
             id: null,
             actionUrl: '',
             nama_customer: '',
             status: '',
-            catatan: ''
+            catatan: '',
+            details: []
         },
-        openModal(id, nama, status, catatan) {
+        // PERBAIKAN: Parameter 'detailsData' sekarang langsung menerima Object, bukan String
+        openModal(id, nama, status, catatan, detailsData) {
             this.form.id = id;
             this.form.actionUrl = '{{ url('/pesanan/update') }}/' + id;
             this.form.nama_customer = nama;
             this.form.status = status;
             this.form.catatan = catatan;
+            this.form.details = detailsData; 
             this.showModal = true;
         }
     }" class="min-h-screen bg-gray-50 font-sans text-gray-900">
@@ -122,14 +125,15 @@
                             {{-- Tombol Aksi --}}
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center space-x-2">
-                                    {{-- TOMBOL EDIT --}}
+                                    {{-- TOMBOL EDIT (PERHATIKAN TANDA KUTIP SATU DI @click='') --}}
                                     <button 
-                                        @click="openModal(
-                                            '{{ $order->id }}', 
-                                            '{{ addslashes($order->customer->nama ?? $order->nama_customer) }}', 
-                                            '{{ $order->status_order }}', 
-                                            '{{ addslashes($order->catatan ?? '') }}'
-                                        )"
+                                        @click='openModal(
+                                            "{{ $order->id }}", 
+                                            "{{ addslashes($order->customer->nama ?? $order->nama_customer) }}", 
+                                            "{{ $order->status_order }}", 
+                                            "{{ addslashes($order->catatan ?? '') }}",
+                                            {{ $order->details->toJson() }}
+                                        )'
                                         class="p-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition shadow-sm" title="Edit Data">
                                         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                             <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -295,6 +299,97 @@
                                     </select>
                                 </div>
                             </div>
+
+                            {{-- Rincian Pesanan (Bisa Di-edit Langsung) --}}
+                            <div class="space-y-2 col-span-2 pt-2">
+                                <label class="block text-sm font-bold text-gray-700">Rincian Layanan</label>
+                                
+                                <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <table class="w-full text-sm text-left">
+                                        <thead class="bg-gray-50 text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            <tr>
+                                                <th class="px-4 py-3 w-1/4">Item / Barang</th>
+                                                <th class="px-4 py-3 w-1/4">Layanan</th>
+                                                <th class="px-4 py-3 w-[15%]">Est. Keluar</th>
+                                                <th class="px-4 py-3 w-[15%]">Status Item</th>
+                                                <th class="px-4 py-3 w-[20%] text-right">Harga (Rp)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 bg-white">
+                                            <template x-for="(detail, index) in form.details" :key="detail.id">
+                                                <tr class="hover:bg-blue-50/30 transition-colors">
+                                                    
+                                                    {{-- 1. INPUT ITEM / BARANG --}}
+                                                    <td class="p-2">
+                                                        <input type="text" :name="'details['+detail.id+'][nama_barang]'" x-model="detail.nama_barang" 
+                                                            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-text">
+                                                    </td>
+                                                    
+                                                    {{-- 2. INPUT LAYANAN --}}
+                                                    <td class="p-2">
+                                                        <input type="text" :name="'details['+detail.id+'][layanan]'" x-model="detail.layanan" 
+                                                            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-text">
+                                                    </td>
+
+                                                    {{-- 3. INPUT ESTIMASI KELUAR (KALENDER) --}}
+                                                    <td class="p-2">
+                                                        <input type="date" :name="'details['+detail.id+'][estimasi_keluar]'" x-model="detail.estimasi_keluar ? detail.estimasi_keluar.substring(0, 10) : ''" 
+                                                            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer">
+                                                    </td>
+
+                                                    {{-- 4. INPUT STATUS --}}
+                                                    <td class="p-2">
+                                                        <select :name="'details['+detail.id+'][status]'" x-model="detail.status" 
+                                                            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer">
+                                                            <option value="Proses">Proses</option>
+                                                            <option value="Selesai">Selesai</option>
+                                                            <option value="Diambil">Diambil</option>
+                                                        </select>
+                                                    </td>
+
+                                                    {{-- 5. INPUT HARGA --}}
+                                                    <td class="p-2">
+                                                        <input type="number" :name="'details['+detail.id+'][harga]'" x-model="detail.harga" 
+                                                            class="w-full px-3 py-2 text-right bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-800 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-text" 
+                                                            placeholder="0">
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                        
+                                        {{-- BARIS TOTAL TAGIHAN --}}
+                                        <tfoot class="bg-gray-50/80 border-t border-gray-200">
+                                            <tr>
+                                                <td colspan="4" class="px-4 py-3 text-right text-sm font-bold text-gray-600 uppercase tracking-wider">
+                                                    Total Tagihan
+                                                </td>
+                                                <td class="px-4 py-3 text-right">
+                                                    <span class="text-lg font-black text-blue-600" 
+                                                        x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(form.details.reduce((sum, item) => sum + parseInt(item.harga || 0), 0))">
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+            
+            {{-- BARIS TOTAL TAGIHAN OTOMATIS --}}
+            <tfoot class="bg-gray-50/80 border-t border-gray-200">
+                <tr>
+                    <td colspan="4" class="px-4 py-3 text-right text-sm font-bold text-gray-600 uppercase tracking-wider">
+                        Total Tagihan
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="text-lg font-black text-blue-600" 
+                            x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(form.details.reduce((sum, item) => sum + parseInt(item.harga || 0), 0))">
+                        </span>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
 
                             {{-- Input Catatan --}}
                             <div class="space-y-1">

@@ -71,31 +71,30 @@ class MemberController extends Controller
     }
 
     public function claimPoints(Request $request)
-{
-    // 1. Cari Member berdasarkan ID
-    $member = Member::find($request->member_id);
+    {
+        // 1. Cari Member berdasarkan ID
+        $member = Member::find($request->member_id);
 
-    if (!$member) {
-        return response()->json(['status' => 'error', 'message' => 'Member tidak ditemukan'], 404);
+        if (!$member) {
+            // UBAH: Gunakan back()->with('error', ...) bukan response()->json()
+            return back()->with('error', 'Member tidak ditemukan.');
+        }
+
+        // 2. Tentukan Target Poin (Sesuaikan dengan tampilan Anda, misal 8)
+        $targetPoin = 8; 
+
+        // 3. Cek apakah poin cukup
+        if ($member->poin < $targetPoin) {
+            return back()->with('error', 'Poin belum cukup untuk klaim reward!');
+        }
+
+        // 4. Kurangi Poin
+        $member->decrement('poin', $targetPoin);
+
+        // (Opsional) 5. Simpan data reward ke pesanan
+        // Di sini Anda bisa menambahkan kode untuk mencatat reward yang dipilih ke Order Detail
+
+        // 6. SUKSES: Kembali ke halaman Detail Pesanan
+        return back()->with('success', 'Reward "' . $request->reward_item . '" berhasil diklaim! Poin telah dipotong.');
     }
-
-    // 2. Tentukan Target Poin (Sesuaikan dengan tampilan Anda, misal 8 atau 10)
-    $targetPoin = 8; 
-
-    // 3. Cek apakah poin cukup
-    if ($member->poin < $targetPoin) {
-        return response()->json(['status' => 'error', 'message' => 'Poin belum cukup untuk klaim!'], 400);
-    }
-
-    // 4. Kurangi Poin
-    $member->decrement('poin', $targetPoin);
-
-    // 5. Kembalikan Response Sukses
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Reward berhasil diklaim! Poin telah dipotong.',
-        'sisa_poin' => $member->poin,
-        'target' => $targetPoin
-    ]);
-}
 }
