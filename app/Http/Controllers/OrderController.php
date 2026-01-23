@@ -126,27 +126,27 @@ class OrderController extends Controller
      * Menyimpan ke 3 Tabel sekaligus (Customers -> Orders -> OrderDetails)
      */
     public function store(Request $request)
-{
-    // 1. VALIDASI DIHIDUPKAN KEMBALI
-    $request->validate([
-        'nama_customer' => 'required',
-        'no_hp' => 'required',
-        'item.*' => 'required',
-        'harga.*' => 'required', // Hapus 'numeric' agar tidak error kena "Rp"
-    ]);
+    {
+        // 1. VALIDASI DIHIDUPKAN KEMBALI
+        $request->validate([
+            'nama_customer' => 'required',
+            'no_hp' => 'required',
+            'item.*' => 'required',
+            'harga.*' => 'required', // Hapus 'numeric' agar tidak error kena "Rp"
+        ]);
 
         try {
             DB::beginTransaction();
 
-        // ... Simpan Customer (Sama seperti sebelumnya) ...
-        $customer = Customer::firstOrCreate(
-            ['no_hp' => $request->no_hp],
-            ['nama' => $request->nama_customer]
-        );
+            // ... Simpan Customer ...
+            $customer = Customer::firstOrCreate(
+                ['no_hp' => $request->no_hp],
+                ['nama' => $request->nama_customer]
+            );
 
-        // ... Siapkan Invoice & Harga (Sama seperti sebelumnya) ...
-        $count = Order::whereDate('created_at', today())->count() + 1;
-        $invoice = 'INV-' . date('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+            // ... Siapkan Invoice & Harga ...
+            $count = Order::whereDate('created_at', today())->count() + 1;
+            $invoice = 'INV-' . date('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
 
             // 4. Hitung Total Harga
             $totalHarga = 0;
@@ -219,9 +219,6 @@ class OrderController extends Controller
 
             DB::commit();
             return redirect()->route('pesanan.index')->with('success', 'Order berhasil! ' . $invoice);
-            DB::commit();
-
-            return redirect()->route('pesanan.index')->with('success', 'Order berhasil diinput!');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -230,28 +227,28 @@ class OrderController extends Controller
     }
 
     // --- FUNGSI UPDATE STATUS PER ITEM ---
-    public function updateDetail(Request $request, $id) 
+    public function updateDetail(Request $request, $id)
     {
         $detail = OrderDetail::findOrFail($id);
+        
         if ($request->has('status')) {
             $detail->status = $request->status;
             $detail->save();
         }
-        
+
         // Cek apakah semua item sudah selesai
         $order = $detail->order;
-        $itemBelumSelesai = $order->details()->whereNotIn('status', ['Selesai', 'Diambil'])->count();
+        $itemBelumSelesai = $order->details()
+            ->whereNotIn('status', ['Selesai', 'Diambil'])
+            ->count();
+
         $order->status_order = ($itemBelumSelesai == 0) ? 'Selesai' : 'Proses';
         $order->save();
-        
+
         return back()->with('success', 'Status berhasil diperbarui');
     }
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Gagal menyimpan: ' . $e->getMessage())->withInput();
-        }
-    }
 
+    // --- FUNGSI TOGGLE WA ---
     public function toggleWa($id, $type)
     {
         $order = Order::findOrFail($id);
@@ -266,65 +263,10 @@ class OrderController extends Controller
         return back();
     }
 
-    public function updateDetail(Request $request, $id)
-    {
-        $detail = OrderDetail::findOrFail($id);
-        
-        if ($request->has('status')) {
-            $detail->status = $request->status;
-            $detail->save();
-        }
-
-        $order = $detail->order;
-        $itemBelumSelesai = $order->details()
-            ->whereNotIn('status', ['Selesai', 'Diambil'])
-            ->count();
-
-        if ($itemBelumSelesai == 0) {
-            $order->status_order = 'Selesai';
-        } else {
-            $order->status_order = 'Proses';
-        }
-        
-        $order->save();
-
-        return back()->with('success', 'Status berhasil diperbarui');
-    }
-
-    // --- FUNGSI TOGGLE WA ---
-    public function toggleWa($id, $type) 
-    {
-        $order = Order::findOrFail($id);
-        if ($type == 1) $order->wa_sent_1 = !$order->wa_sent_1;
-        elseif ($type == 2) $order->wa_sent_2 = !$order->wa_sent_2;
-        $order->save();
-        return back();
-    }
-
     // --- FUNGSI AJAX CEK CUSTOMER ---
-    public function checkCustomer(Request $request) 
-    {
-        $customer = Customer::with('member')->where('no_hp', $request->no_hp)->first();
-        
-        if ($customer) {
-            $poin = $customer->member ? $customer->member->poin : 0;
-            return response()->json([
-                'found' => true,
-                'nama' => $customer->nama,
-                'tipe' => $customer->member ? 'Member' : 'Repeat Order',
-                'poin' => $poin,
-                'target' => 8, 
-                'bisa_claim' => $poin >= 8,
-                'member_id' => $customer->member ? $customer->member->id : null,
-            ]);
-        }
-        return response()->json(['found' => false]);
-    }
     public function checkCustomer(Request $request)
     {
-        $customer = \App\Models\Customer::with('member')
-                    ->where('no_hp', $request->no_hp)
-                    ->first();
+        $customer = Customer::with('member')->where('no_hp', $request->no_hp)->first();
 
         if ($customer) {
             $poin = $customer->member ? $customer->member->poin : 0;
