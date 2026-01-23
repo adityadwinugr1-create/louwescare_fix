@@ -12,8 +12,77 @@ use Illuminate\Support\Facades\DB;
 class OrderController extends Controller
 {
     /**
-     * 1. HALAMAN INPUT ORDER (INDEX/CHECK)
-     * Menampilkan form input order
+     * 1. HALAMAN MANAJEMEN PESANAN (INDEX)
+     * Menampilkan daftar order dengan Relasi Customer & Details
+     */
+    public function index(Request $request)
+    {
+        $query = Order::with(['customer', 'details'])->latest();
+
+        if ($request->filled('search')) {
+            $keyword = $request->search;
+            $query->where(function($q) use ($keyword) {
+                $q->where('no_invoice', 'like', "%{$keyword}%")
+                  ->orWhereHas('customer', function($c) use ($keyword) {
+                      $c->where('nama', 'like', "%{$keyword}%")
+                        ->orWhere('no_hp', 'like', "%{$keyword}%");
+                  });
+            });
+        }
+
+        $orders = $query->paginate(10);
+        return view('pesanan.index', compact('orders')); // Sesuaikan jika nama file view berbeda
+    }
+
+    /**
+     * [PENTING] MENAMPILKAN DETAIL PESANAN
+     * Method ini wajib ada agar tidak error saat klik tombol Detail
+     */
+    public function show($id)
+    {
+        $order = Order::with(['customer', 'details'])->findOrFail($id);
+        return view('pesanan.show', compact('order'));
+    }
+
+    /**
+     * [PENTING] UPDATE DATA UTAMA (Untuk Pop-up Edit)
+     * Method ini menangani form edit yang muncul di Pop-up
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'nama_customer' => 'required|string',
+            'status' => 'required|string',
+        ]);
+
+        try {
+            DB::beginTransaction();
+            
+            $order = Order::findOrFail($id);
+            
+            // 1. Update Data Order
+            $order->status_order = $request->status;
+            $order->catatan = $request->catatan; 
+            $order->save();
+
+            // 2. Update Nama Customer
+            if ($order->customer) {
+                $order->customer->nama = $request->nama_customer;
+                $order->customer->save();
+            }
+
+            DB::commit();
+            return back()->with('success', 'Data pesanan berhasil diperbarui.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal update: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 2. CEK STATUS CUSTOMER SEBELUM ORDER
+     * (New / Repeat / Member)
      */
     public function check(Request $request)
     {
@@ -50,23 +119,23 @@ class OrderController extends Controller
     }
 
     /**
-     * 2. SIMPAN ORDER (CORE FUNCTION)
-     * Menyimpan data ke tabel Customers, Orders, dan OrderDetails
+     * 3. SIMPAN ORDER (CORE FUNCTION)
+     * Menyimpan ke 3 Tabel sekaligus (Customers -> Orders -> OrderDetails)
      */
     public function store(Request $request)
     {
-        // Validasi Input
+        // 1. VALIDASI DIHIDUPKAN KEMBALI
         $request->validate([
             'nama_customer' => 'required',
             'no_hp' => 'required',
-            'item.*' => 'required', // Pastikan minimal ada 1 item
-            'harga.*' => 'required', 
+            'item.*' => 'required',
+            'harga.*' => 'required', // Hapus 'numeric' agar tidak error kena "Rp"
         ]);
 
         try {
             DB::beginTransaction(); // Mulai Transaksi Database
 
-            // A. Simpan / Update Data Customer
+            // ... Simpan Customer ...
             $customer = Customer::firstOrCreate(
                 ['no_hp' => $request->no_hp],
                 ['nama' => $request->nama_customer]
@@ -213,20 +282,59 @@ class OrderController extends Controller
     public function updateDetail(Request $request, $id)
     {
         $detail = OrderDetail::findOrFail($id);
+        
         if ($request->has('status')) {
             $detail->status = $request->status;
             $detail->save();
         }
-        
-        // Cek apakah semua item dalam order ini sudah selesai
+
+        // Cek apakah semua item sudah selesai
         $order = $detail->order;
-        $itemBelumSelesai = $order->details()->whereNotIn('status', ['Selesai', 'Diambil'])->count();
-        
-        if ($itemBelumSelesai == 0) {
-            $order->status_order = 'Selesai';
-            $order->save();
-        }
+        $itemBelumSelesai = $order->details()
+            ->whereNotIn('status', ['Selesai', 'Diambil'])
+            ->count();
+
+        $order->status_order = ($itemBelumSelesai == 0) ? 'Selesai' : 'Proses';
+        $order->save();
 
         return back()->with('success', 'Status berhasil diperbarui');
+    }
+
+    // --- FUNGSI TOGGLE WA ---
+    public function toggleWa($id, $type)
+    {
+        $order = Order::findOrFail($id);
+        
+        if ($type == 1) {
+            $order->wa_sent_1 = !$order->wa_sent_1;
+        } elseif ($type == 2) {
+            $order->wa_sent_2 = !$order->wa_sent_2;
+        }
+        
+        $order->save();
+        return back();
+    }
+
+    // --- FUNGSI AJAX CEK CUSTOMER ---
+    public function checkCustomer(Request $request)
+    {
+        $customer = Customer::with('member')->where('no_hp', $request->no_hp)->first();
+
+        if ($customer) {
+            $poin = $customer->member ? $customer->member->poin : 0;
+            $targetPoin = 8; 
+            
+            return response()->json([
+                'found' => true,
+                'nama' => $customer->nama,
+                'tipe' => $customer->member ? 'Member' : 'Regular',
+                'poin' => $poin,
+                'target' => $targetPoin, 
+                'bisa_claim' => $poin >= $targetPoin,
+                'member_id' => $customer->member ? $customer->member->id : null,
+            ]);
+        }
+
+        return response()->json(['found' => false]);
     }
 }
