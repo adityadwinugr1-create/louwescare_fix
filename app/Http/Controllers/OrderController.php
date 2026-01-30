@@ -14,7 +14,6 @@ class OrderController extends Controller
 {
     /**
      * 1. HALAMAN MANAJEMEN PESANAN (INDEX)
-     * Menampilkan daftar order dengan Relasi Customer & Details
      */
     public function index(Request $request)
     {
@@ -38,6 +37,130 @@ class OrderController extends Controller
         $popupOrder = null;
         if ($request->has('invoice_id')) {
             $popupOrder = Order::with(['customer', 'details'])->find($request->invoice_id);
+
+        // === TAMBAHAN LOGIKA LIVE SEARCH ===
+        if ($request->ajax()) {
+            return view('pesanan.partials.list', compact('orders'))->render();
+        }
+
+        return view('pesanan.index', compact('orders')); 
+    }
+
+    /**
+     * MENAMPILKAN DETAIL PESANAN
+     */
+    public function show($id)
+    {
+        $order = Order::with(['customer', 'details'])->findOrFail($id);
+        $treatments = Treatment::orderBy('nama_treatment', 'asc')->get();
+
+        return view('pesanan.show', compact('order', 'treatments'));
+    }
+
+    /**
+     * UPDATE DATA UTAMA & DETAIL PESANAN
+     * (Bagian ini diperbarui untuk sinkronisasi status otomatis)
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'nama_customer' => 'required|string',
+            'status' => 'required|string',
+            'details' => 'array' 
+        ]);
+
+        try {
+            DB::beginTransaction();
+            
+            $order = Order::findOrFail($id);
+            $oldStatus = $order->status_order; // Status sebelum diedit
+            $targetStatus = $request->status;  // Status baru dari dropdown
+            
+            // 1. Update Data Utama
+            $order->status_order = $targetStatus;
+            $order->catatan = $request->catatan; 
+            $order->kasir_keluar = $request->kasir_keluar ?? null;
+            
+            // 2. Update Nama Customer
+            if ($order->customer) {
+                $order->customer->nama = $request->nama_customer;
+                $order->customer->save();
+            }
+
+            // === LOGIKA CERDAS: TOP-DOWN ===
+            // Kita hanya memaksa ubah semua item jika status UTAMA benar-benar BERUBAH (misal: Proses -> Selesai).
+            // Jika status utama tidak diubah (tetap "Selesai"), kita biarkan user mengatur per item.
+            $statusChanged = ($oldStatus !== $targetStatus);
+            $isFinalStatus = in_array($targetStatus, ['Selesai', 'Diambil', 'Batal']);
+            
+            $shouldForceItems = $statusChanged && $isFinalStatus;
+
+            // 3. Update Rincian Layanan
+            if ($request->has('details')) {
+                $totalHargaBaru = 0;
+
+                foreach ($request->details as $detailId => $data) {
+                    $detail = OrderDetail::find($detailId);
+                    
+                    if ($detail && $detail->order_id == $order->id) {
+                        // Update Data Barang
+                        $detail->nama_barang = $data['nama_barang'] ?? $detail->nama_barang;
+                        $detail->layanan = $data['layanan'] ?? $detail->layanan;
+                        $detail->estimasi_keluar = $data['estimasi_keluar'] ?? $detail->estimasi_keluar;
+                        $detail->harga = (int) ($data['harga'] ?? $detail->harga);
+
+                        // Cek apakah harus memaksa status item?
+                        if ($shouldForceItems) {
+                            $detail->status = $targetStatus; // Ikuti Status Utama
+                        } else {
+                            $detail->status = $data['status'] ?? $detail->status; // Ikuti Input Per Item
+                        }
+                        
+                        $detail->save();
+                        $totalHargaBaru += $detail->harga; 
+                    }
+                }
+                $order->total_harga = $totalHargaBaru;
+
+                // === LOGIKA CERDAS: BOTTOM-UP (Auto Status) ===
+                // Cek kondisi item terbaru untuk menentukan status order otomatis
+                
+                // Refresh data item agar mendapat status terbaru yang baru saja disimpan
+                $allItems = $order->details()->get();
+                $totalItem = $allItems->count();
+                
+                if ($totalItem > 0) {
+                    $countDiambil = $allItems->where('status', 'Diambil')->count();
+                    $countSelesaiOrDiambil = $allItems->whereIn('status', ['Selesai', 'Diambil'])->count();
+                    
+                    // Skenario 1: Semua item sudah "Diambil" -> Status Order WAJIB "Diambil"
+                    if ($countDiambil == $totalItem) {
+                        $order->status_order = 'Diambil';
+                    } 
+                    // Skenario 2: Semua item sudah "Selesai" (atau campur Diambil) -> Status Order "Selesai"
+                    elseif ($countSelesaiOrDiambil == $totalItem) {
+                        // Jangan ubah jika user secara eksplisit set ke "Batal"
+                        if ($targetStatus !== 'Batal') {
+                            $order->status_order = 'Selesai';
+                        }
+                    } 
+                    // Skenario 3: Masih ada yang Proses -> Status Order "Proses"
+                    else {
+                        if ($targetStatus !== 'Batal') {
+                            $order->status_order = 'Proses';
+                        }
+                    }
+                }
+            }
+
+            $order->save();
+
+            DB::commit();
+            return back()->with('success', 'Status pesanan berhasil diperbarui.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal update: ' . $e->getMessage());
         }
 
         return view('pesanan.index', compact('orders', 'popupOrder')); 
@@ -108,6 +231,22 @@ class OrderController extends Controller
             }
 
             // 3. Hitung Total Harga Awal (Sebelum Diskon)
+            // === [PERBAIKAN INVOICE MULAI DI SINI] ===
+            
+            // LOGIKA LAMA (Hapus/Komentari ini):
+            // $count = Order::whereDate('created_at', today())->count() + 1;
+            // $invoice = 'INV-' . date('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+
+            // LOGIKA BARU:
+            // 1. Hitung total seluruh order yang pernah ada (Continuous Counter)
+            $count = Order::count() + 1; 
+
+            // 2. Generate Invoice tanpa padding '00' (contoh: INV-20260130-4)
+            $invoice = 'INV-' . date('Ymd') . '-' . $count;
+
+            // === [PERBAIKAN SELESAI] ===
+
+            // 4. Hitung Total Harga
             $totalHarga = 0;
             if (is_array($request->harga)) {
                 $totalHarga = array_sum(array_map(function ($h) {
@@ -159,6 +298,12 @@ class OrderController extends Controller
             // 5. Logika Pembayaran
             $statusPembayaran = $request->status_pembayaran ?? 'Belum Lunas';
             $metodePembayaran = $request->metode_pembayaran ?? 'Tunai';
+            // ... (Kode ke bawah tetap sama tidak perlu diubah) ...
+            
+            // 5. Logika Pembayaran
+            $statusPembayaran = $request->status_pembayaran ?? 'Belum Lunas';
+            $metodePembayaran = $request->metode_pembayaran ?? 'Tunai';
+            
             $inputPaidAmount = $request->paid_amount ? (int) preg_replace('/[^0-9]/', '', $request->paid_amount) : 0;
             
             $jumlahBayar = 0;
@@ -173,7 +318,7 @@ class OrderController extends Controller
 
             // 6. Simpan Order Utama
             $order = Order::create([
-                'no_invoice' => $invoice,
+                'no_invoice' => $invoice, // Invoice baru dipakai di sini
                 'customer_id' => $customer->id,
                 'tgl_masuk' => now(),
                 'total_harga' => $totalHargaFinal, // Harga Setelah Diskon
@@ -331,7 +476,16 @@ class OrderController extends Controller
             ->count();
 
         if ($itemBelumSelesai == 0) {
-            $order->status_order = 'Selesai';
+            // Logika Cerdas yang sama: Cek apakah semua "Diambil"?
+            $itemBukanDiambil = $order->details()
+                ->where('status', '!=', 'Diambil')
+                ->count();
+
+            if ($itemBukanDiambil == 0) {
+                $order->status_order = 'Diambil';
+            } else {
+                $order->status_order = 'Selesai';
+            }
         } else {
             $order->status_order = 'Proses';
         }

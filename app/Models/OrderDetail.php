@@ -16,6 +16,7 @@ class OrderDetail extends Model
         'harga',
         'estimasi_keluar', // <--- TAMBAHKAN INI (WAJIB)
         'tanggal_keluar', // <--- WAJIB DITAMBAHKAN
+        'estimasi_keluar', // <--- WAJIB DITAMBAHKAN
         'catatan',        // <--- WAJIB DITAMBAHKAN
         'status',
         'klaim', // <--- TAMBAHKAN INI
