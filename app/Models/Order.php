@@ -15,6 +15,7 @@ class Order extends Model
         'tgl_masuk',
         'estimasi_selesai',
         'total_harga',
+        'klaim',
         'paid_amount',        // <--- WAJIB DITAMBAHKAN
         'status_pembayaran',
         'metode_pembayaran',  // <--- WAJIB DITAMBAHKAN
@@ -23,6 +24,7 @@ class Order extends Model
         'sumber_info',
         'catatan',
         'kasir',
+        'kasir_keluar',
         'wa_sent_1',
         'wa_sent_2',
     ];

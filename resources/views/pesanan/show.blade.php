@@ -1,333 +1,456 @@
 <x-app-layout>
-    <div class="py-12">
+    {{-- CSS KHUSUS NOTA & FORM --}}
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap');
+        .invoice-font { font-family: 'Courier Prime', monospace; }
+        
+        /* Font Nota mirip gambar referensi */
+        .invoice-area { font-family: 'Helvetica', 'Arial', sans-serif; }
+        .dashed-line { border-bottom: 1px dashed #000; }
+        .thick-line { border-bottom: 2px solid #000; }
+
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Hide scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+
+    {{-- WRAPPER UTAMA DENGAN ALPINE JS --}}
+    <div id="main-app" class="py-12"
+         x-data="{ 
+            // DATA STATE
+            claimStatus: '{{ $order->klaim }}', // Data dari DB
+            claimType: '',      // Pilihan user saat ini
+            tempReward: 'diskon', // Pilihan sementara modal
+            isModalOpen: false,   // Kontrol modal
+
+            // --- LOGIKA MODAL ---
+            openModal() { this.isModalOpen = true; },
+            closeModal() { this.isModalOpen = false; },
+            applyReward() {
+                this.claimType = this.tempReward;
+                this.closeModal();
+            },
+
+            // --- LOGIKA HARGA ---
+            totalPrice: 0, 
+            get discount() { 
+                if (this.claimType === 'diskon') return 10000; 
+                if (this.claimStatus === 'Diskon' && this.claimType === '') return 10000; 
+                return 0; 
+            },
+            get finalBill() { return Math.max(0, this.totalPrice - this.discount); },
+            formatRupiah(number) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number); },
+            calculateUI() {
+                let total = 0;
+                document.querySelectorAll('.input-harga').forEach(input => {
+                    let val = parseInt(input.value.replace(/\./g, '')) || 0;
+                    total += val;
+                });
+                this.totalPrice = total;
+            },
+            init() { this.calculateUI(); }
+         }">
+
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
-            {{-- Tombol Kembali --}}
+            {{-- HEADER --}}
             <div class="mb-6 flex items-center justify-between">
-                <a href="{{ route('pesanan.index') }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
+                <a href="{{ route('pesanan.index') }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 transition">
                     &larr; Kembali ke Daftar
                 </a>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                    Detail Pesanan #{{ $order->no_invoice }}
-                </h2>
+                <div class="text-right">
+                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                        Detail Pesanan #{{ $order->no_invoice }}
+                    </h2>
+                    <p class="text-sm text-gray-500">Total Akhir: <span class="font-bold text-blue-600 text-lg" x-text="formatRupiah(finalBill)"></span></p>
+                </div>
             </div>
 
-            {{-- 
-                PENTING: Tag FORM sekarang dipindah ke sini agar membungkus 
-                KARTU KIRI (Catatan) dan KARTU KANAN (Rincian) sekaligus.
-            --}}
-            <form action="{{ route('pesanan.update', $order->id) }}" method="POST">
+            {{-- FORM EDIT (AJAX) --}}
+            <form id="editOrderForm" onsubmit="event.preventDefault();">
                 @csrf
                 @method('PATCH')
 
-                {{-- Input Tersembunyi untuk data yang tidak diedit di halaman ini --}}
                 <input type="hidden" name="nama_customer" value="{{ $order->customer->nama ?? $order->nama_customer }}">
-                <input type="hidden" name="status" value="{{ $order->status_order }}">
+                {{-- Input Hidden Terikat Alpine --}}
+                <input type="hidden" name="claim_type" x-model="claimType"> 
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     
-                    {{-- KARTU KIRI: Informasi Pelanggan & Status --}}
+                    {{-- KARTU KIRI --}}
                     <div class="col-span-1 space-y-6">
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6 bg-white border-b border-gray-200">
                                 <h3 class="text-lg font-medium text-gray-900 mb-4">Data Pelanggan</h3>
-                                
                                 <dl class="space-y-4 text-sm">
-                                    <div>
-                                        <dt class="text-gray-500">Nama Lengkap</dt>
-                                        <dd class="font-semibold text-gray-900">{{ $order->customer->nama ?? '-' }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt class="text-gray-500">Nomor WhatsApp</dt>
-                                        <dd class="font-semibold text-gray-900 flex items-center gap-2">
-                                            {{ $order->customer->no_hp ?? '-' }}
-                                            @if($order->customer)
-                                                <a href="https://wa.me/{{ preg_replace('/^0/', '62', $order->customer->no_hp) }}" target="_blank" class="text-green-600 hover:text-green-800" title="Hubungi via WhatsApp">
-                                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"></path></svg>
-                                                </a>
-                                            @endif
-                                        </dd>
-                                    </div>
+                                    <div><dt class="text-gray-500">Nama Lengkap</dt><dd class="font-semibold text-gray-900">{{ $order->customer->nama ?? '-' }}</dd></div>
+                                    <div><dt class="text-gray-500">Nomor WhatsApp</dt><dd class="font-semibold text-gray-900">{{ $order->customer->no_hp ?? '-' }}</dd></div>
                                     
-                                    {{-- KOTAK TIPE PELANGGAN & POIN --}}
-                                    <div class="grid grid-cols-2 gap-4 bg-gray-50/50 p-3 rounded-lg border border-gray-100">
-                                        <div>
-                                            <dt class="text-gray-500 text-xs uppercase tracking-wider font-bold mb-1">Tipe Pelanggan</dt>
-                                            <dd>
-                                                <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-bold rounded-full {{ $order->tipe_customer == 'Member' ? 'bg-pink-100 text-pink-800 border border-pink-200' : 'bg-blue-100 text-blue-800 border border-blue-200' }}">
-                                                    {{ $order->tipe_customer }}
-                                                </span>
-                                            </dd>
-                                        </div>
-
-                                        @if($order->customer && $order->customer->member)
-                                        <div>
-                                            <dt class="text-gray-500 text-xs uppercase tracking-wider font-bold mb-1">Poin</dt>
-                                            <dd class="flex items-center gap-2">
-                                                <span class="text-sm font-black text-gray-800">{{ $order->customer->member->poin }}/8</span>
-                                                
-                                                {{-- Tombol Claim Memanggil Modal --}}
-                                                @if($order->customer->member->poin >= 8)
-                                                    <button type="button" onclick="openClaimModal()" 
-                                                        class="bg-green-600 hover:bg-green-700 text-white text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded shadow-sm transition">
-                                                        Claim
-                                                    </button>
-                                                @endif
-                                            </dd>
-                                        </div>
-                                        @endif
+                                    {{-- BOX POIN & CLAIM --}}
+                                    @if($order->customer && $order->customer->member)
+                                    <div class="bg-blue-50 p-3 rounded border border-blue-100 flex justify-between items-center">
+                                        <div><dt class="text-blue-600 text-xs font-bold uppercase">Poin Member</dt><dd class="text-lg font-black text-gray-800">{{ $order->customer->member->poin }}/8</dd></div>
+                                        
+                                        {{-- Tombol Muncul via Alpine --}}
+                                        <template x-if="!claimStatus && !claimType && {{ $order->customer->member->poin }} >= 8">
+                                            <button type="button" @click="openModal()" class="bg-green-600 hover:bg-green-700 text-white text-[10px] font-black uppercase tracking-wide px-2 py-1 rounded shadow-sm transition">Claim Reward</button>
+                                        </template>
+                                        
+                                        {{-- Badge Status --}}
+                                        <template x-if="claimStatus || claimType">
+                                            <span class="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded border border-yellow-200 font-bold" x-text="'Klaim: ' + (claimType ? (claimType == 'diskon' ? 'Diskon (Baru)' : 'Parfum (Baru)') : claimStatus)"></span>
+                                        </template>
                                     </div>
+                                    @endif
                                 </dl>
                             </div>
                         </div>
 
+                        {{-- Status & Info --}}
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6 bg-white border-b border-gray-200">
                                 <h3 class="text-lg font-medium text-gray-900 mb-4">Status & Info</h3>
                                 <dl class="space-y-3 text-sm">
-                                    {{-- INFO KASIR / CS MASUK --}}
+                                    <div><dt class="text-gray-500 font-bold">CS Masuk</dt><dd class="font-semibold text-gray-900 mt-1">{{ $order->kasir ?? '-' }}</dd></div>
                                     <div>
-                                        <dt class="text-gray-500">Kasir / CS</dt>
-                                        <dd class="font-semibold text-gray-900 flex items-center gap-1.5 mt-1">
-                                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                            {{ $order->kasir ?? 'Admin / Tidak Diketahui' }}
+                                        <dt class="text-gray-500 font-bold mb-1">CS Keluar (Penyerah)</dt>
+                                        <dd>
+                                            <select name="kasir_keluar" id="kasir_keluar" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 cursor-pointer">
+                                                <option value="">- Pilih CS -</option>
+                                                <option value="Admin 1" {{ ($order->kasir_keluar ?? '') == 'Admin 1' ? 'selected' : '' }}>Admin 1</option>
+                                                <option value="Admin 2" {{ ($order->kasir_keluar ?? '') == 'Admin 2' ? 'selected' : '' }}>Admin 2</option>
+                                                <option value="CS Naufal" {{ ($order->kasir_keluar ?? '') == 'CS Naufal' ? 'selected' : '' }}>CS Naufal</option>
+                                            </select>
                                         </dd>
                                     </div>
-                                    <div>
-                                        <dt class="text-gray-500">Tanggal Masuk</dt>
-                                        <dd class="font-semibold text-gray-900">{{ $order->created_at->format('d M Y, H:i') }}</dd>
-                                    </div>
                                     
-                                    {{-- STATUS ORDER (DIPERBAIKI LOGIKA WARNANYA) --}}
+                                    {{-- STATUS ORDER (READ ONLY - OTOMATIS) --}}
                                     <div>
-                                        <dt class="text-gray-500">Status Order</dt>
+                                        <dt class="text-gray-500 font-bold mb-1">Status Order</dt>
                                         <dd>
                                             @php
-                                                $badgeClass = match($order->status_order) {
-                                                    'Selesai' => 'bg-green-100 text-green-800', // Hijau
-                                                    'Proses' => 'bg-yellow-100 text-yellow-800', // Kuning
-                                                    'Diambil' => 'bg-blue-100 text-blue-800',   // [FIX] Biru
-                                                    'Batal' => 'bg-red-100 text-red-800',       // Merah
-                                                    default => 'bg-gray-100 text-gray-800'      // Abu-abu
-                                                };
+                                                $statusColors = [
+                                                    'Baru' => 'bg-gray-100 text-gray-800 border-gray-200',
+                                                    'Proses' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                    'Selesai' => 'bg-green-100 text-green-800 border-green-200',
+                                                    'Diambil' => 'bg-blue-100 text-blue-800 border-blue-200',
+                                                    'Batal' => 'bg-red-100 text-red-800 border-red-200',
+                                                ];
+                                                $currentColor = $statusColors[$order->status_order] ?? 'bg-gray-100 text-gray-800';
                                             @endphp
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $badgeClass }}">
+                                            
+                                            {{-- Tampilan Badge --}}
+                                            <div class="w-full text-sm font-bold rounded-full border {{ $currentColor }} py-2 px-3 text-center uppercase tracking-wide">
                                                 {{ $order->status_order }}
-                                            </span>
+                                            </div>
+                                            
+                                            {{-- Input Hidden agar controller tetap menerima field ini (sebagai fallback) --}}
+                                            <input type="hidden" name="status" value="{{ $order->status_order }}">
+                                            <p class="text-[10px] text-gray-400 mt-1 italic text-center">*Status berubah otomatis mengikuti item</p>
                                         </dd>
                                     </div>
-                                    
-                                    {{-- CATATAN SEKARANG BISA DI-EDIT (Textarea) --}}
-                                    <div class="pt-2">
-                                        <dt class="text-gray-500 font-bold mb-1">Catatan</dt>
-                                        <dd>
-                                            <textarea name="catatan" rows="3" 
-                                                class="w-full text-sm bg-gray-50 border border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm transition-all p-2.5" 
-                                                placeholder="Tulis catatan di sini...">{{ $order->catatan ?? '' }}</textarea>
-                                        </dd>
-                                    </div>
+
+                                    <div><dt class="text-gray-500 font-bold">Tanggal Masuk</dt><dd class="font-semibold text-gray-900 mt-1">{{ $order->created_at->format('d M Y, H:i') }}</dd></div>
+                                    <div class="pt-2"><dt class="text-gray-500 font-bold mb-1">Catatan Order</dt><dd><textarea name="catatan" rows="3" class="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg p-2.5">{{ $order->catatan ?? '' }}</textarea></dd></div>
                                 </dl>
                             </div>
                         </div>
                     </div>
 
-                    {{-- KARTU KANAN: Detail Item Barang (Bisa Diedit) --}}
+                    {{-- KARTU KANAN: ITEM DETAILS --}}
                     <div class="col-span-1 md:col-span-2">
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6 bg-white border-b border-gray-200">
-                                
-                                {{-- HEADER RINCIAN & DROPDOWN CS KELUAR --}}
-                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-                                    <h3 class="text-lg font-medium text-gray-900">Rincian Layanan</h3>
-                                    
-                                    {{-- Dropdown Pilih CS Keluar --}}
-                                    <div class="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
-                                        <label for="kasir_keluar" class="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                            CS Keluar:
-                                        </label>
-                                        <select name="kasir_keluar" id="kasir_keluar" 
-                                            class="text-sm border-transparent bg-transparent font-semibold text-gray-900 focus:ring-0 cursor-pointer py-1 pl-1 pr-6">
-                                            <option value="">Pilih CS...</option>
-                                            <option value="Admin 1" {{ ($order->kasir_keluar ?? '') == 'Admin 1' ? 'selected' : '' }}>Admin 1</option>
-                                            <option value="Admin 2" {{ ($order->kasir_keluar ?? '') == 'Admin 2' ? 'selected' : '' }}>Admin 2</option>
-                                            <option value="CS Naufal" {{ ($order->kasir_keluar ?? '') == 'CS Naufal' ? 'selected' : '' }}>CS Naufal</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                
+                                <h3 class="text-lg font-medium text-gray-900 mb-4">Rincian Layanan</h3>
                                 <div class="overflow-x-auto border border-gray-200 rounded-lg">
                                     <table class="min-w-full divide-y divide-gray-200 text-sm">
                                         <thead class="bg-gray-50">
                                             <tr>
-                                                <th class="px-3 py-3 text-left font-bold text-gray-600 uppercase tracking-wider w-1/4">Item / Barang</th>
-                                                <th class="px-3 py-3 text-left font-bold text-gray-600 uppercase tracking-wider w-1/4">Layanan</th>
-                                                <th class="px-3 py-3 text-left font-bold text-gray-600 uppercase tracking-wider w-[15%]">Est. Keluar</th>
-                                                <th class="px-3 py-3 text-center font-bold text-gray-600 uppercase tracking-wider w-[15%]">Status</th>
-                                                <th class="px-3 py-3 text-right font-bold text-gray-600 uppercase tracking-wider w-[20%]">Harga (Rp)</th>
+                                                <th class="px-3 py-3 text-left font-bold text-gray-600 w-1/3">Item / Barang</th>
+                                                <th class="px-3 py-3 text-left font-bold text-gray-600 w-1/4">Layanan</th>
+                                                <th class="px-3 py-3 text-left font-bold text-gray-600 w-[15%]">Est. Keluar</th>
+                                                <th class="px-3 py-3 text-center font-bold text-gray-600 w-[10%]">Status</th>
+                                                <th class="px-3 py-3 text-right font-bold text-gray-600 w-[15%]">Harga (Rp)</th>
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-100">
                                             @foreach($order->details as $item)
                                             <tr class="hover:bg-blue-50/30 transition-colors">
-                                                
-                                                {{-- KOTAK NAMA BARANG --}}
                                                 <td class="p-2">
-                                                    <input type="text" name="details[{{ $item->id }}][nama_barang]" value="{{ $item->nama_barang }}" 
-                                                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                                                    <input type="text" name="item[]" value="{{ $item->nama_barang }}" class="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded text-sm font-bold text-gray-900">
+                                                    <input type="text" name="catatan_detail[]" value="{{ $item->catatan }}" class="w-full px-2 py-1 mt-1 bg-white border border-gray-200 rounded text-xs text-gray-500" placeholder="Catatan item...">
                                                 </td>
-
-                                                {{-- KOTAK LAYANAN --}}
-                                                <td class="p-2">
-                                                    <input type="text" name="details[{{ $item->id }}][layanan]" value="{{ $item->layanan }}" 
-                                                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
-                                                </td>
-
-                                                {{-- KOTAK ESTIMASI KELUAR --}}
-                                                <td class="p-2">
-                                                    <input type="date" name="details[{{ $item->id }}][estimasi_keluar]" value="{{ $item->estimasi_keluar ? \Carbon\Carbon::parse($item->estimasi_keluar)->format('Y-m-d') : '' }}" 
-                                                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
-                                                </td>
-
-                                                {{-- KOTAK STATUS --}}
-                                                <td class="p-2">
-                                                    <select name="details[{{ $item->id }}][status]" 
-                                                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all 
-                                                        @if($item->status == 'Proses') text-gray-700
-                                                        @elseif($item->status == 'Selesai') text-gray-700
-                                                        @elseif($item->status == 'Diambil') text-gray-700
-                                                        @else text-gray-700 @endif">
-                                                        <option value="Proses" {{ $item->status == 'Proses' ? 'selected' : '' }}>Proses</option>
-                                                        <option value="Selesai" {{ $item->status == 'Selesai' ? 'selected' : '' }}>Selesai</option>
-                                                        <option value="Diambil" {{ $item->status == 'Diambil' ? 'selected' : '' }}>Diambil</option>
+                                                <td class="p-2 align-top"><input type="text" name="kategori_treatment[]" value="{{ $item->layanan }}" class="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded text-sm"></td>
+                                                <td class="p-2 align-top"><input type="date" name="tanggal_keluar[]" value="{{ $item->estimasi_keluar ? \Carbon\Carbon::parse($item->estimasi_keluar)->format('Y-m-d') : '' }}" class="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded text-xs"></td>
+                                                <td class="p-2 align-top">
+                                                    <select name="status_detail[]" class="w-full px-1 py-1 bg-gray-50 border border-gray-200 rounded text-xs font-semibold">
+                                                        @foreach(['Proses','Selesai','Diambil'] as $s)
+                                                            <option value="{{ $s }}" {{ $item->status == $s ? 'selected' : '' }}>{{ $s }}</option>
+                                                        @endforeach
                                                     </select>
                                                 </td>
-
-                                                {{-- KOTAK HARGA --}}
-                                                <td class="p-2">
-                                                    <input type="number" name="details[{{ $item->id }}][harga]" value="{{ $item->harga }}" 
-                                                        class="w-full px-3 py-2 text-right bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-800 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                                                <td class="p-2 align-top">
+                                                    <input type="text" name="harga[]" value="{{ number_format($item->harga, 0, ',', '.') }}" class="input-harga w-full px-2 py-1 text-right bg-gray-50 border border-gray-200 rounded text-sm font-bold text-gray-800" oninput="formatRupiahInput(this); document.querySelector('#main-app').__x.$data.calculateUI()">
                                                 </td>
                                             </tr>
                                             @endforeach
                                         </tbody>
-                                        <tfoot class="bg-gray-50/80 border-t border-gray-200">
-                                            <tr>
-                                                <td colspan="4" class="px-4 py-3 text-right text-sm font-bold text-gray-600 uppercase tracking-wider">Total Tagihan</td>
-                                                <td class="px-4 py-3 text-right text-lg font-black text-blue-600">
-                                                    Rp{{ number_format($order->total_harga, 0, ',', '.') }}
-                                                </td>
-                                            </tr>
-                                        </tfoot>
                                     </table>
                                 </div>
-                                {{-- POSISI BARU TOMBOL SIMPAN (Kanan Bawah) --}}
-                                <div class="mt-6 flex justify-end border-t border-gray-100 pt-6">
-                                    <button type="submit" class="inline-flex items-center px-6 py-3 bg-blue-600 border border-transparent rounded-lg font-bold text-sm text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-md">
-                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                        Simpan Perubahan
+                                <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                    <button type="button" onclick="window.updateOrder(false)" class="inline-flex items-center px-6 py-3 bg-gray-600 border border-transparent rounded-lg font-bold text-sm text-white hover:bg-gray-700 transition">Simpan</button>
+                                    <button type="button" onclick="window.updateOrder(true)" class="inline-flex items-center px-6 py-3 bg-blue-600 border border-transparent rounded-lg font-bold text-sm text-white hover:bg-blue-700 shadow-md transition">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>Simpan & Cetak
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-
                 </div>
-            </form> {{-- END FORM --}}
-            
-        </div>
-    </div>
+            </form>
 
-    {{-- ============================================= --}}
-    {{-- MODAL CLAIM REWARD                            --}}
-    {{-- ============================================= --}}
-    @if($order->customer && $order->customer->member)
-    <div id="modal-claim-reward" 
-         class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-60 hidden"
-         aria-labelledby="modal-title" role="dialog" aria-modal="true" onclick="closeClaimModal()">
-
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onclick="event.stopPropagation()">
-            
-            {{-- Header --}}
-            <div class="bg-[#3b66ff] p-4 flex justify-between items-center">
-                <h3 class="text-white font-bold text-lg">Klaim Reward</h3>
-                <button type="button" onclick="closeClaimModal()" class="text-white font-bold text-2xl hover:text-gray-200">&times;</button>
-            </div>
-
-            <div class="p-6">
-                {{-- Info Poin (Otomatis dari Database) --}}
-                <div class="mb-6 bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
-                    <span class="text-xs text-blue-600 font-bold uppercase">Poin Kamu</span>
-                    <div class="text-3xl font-black text-[#3b66ff] mt-1">
-                        <span id="display-poin-modal">{{ $order->customer->member->poin }}</span> pts
+            {{-- MODAL CLAIM REWARD (Di dalam x-data scope) --}}
+            <div x-show="isModalOpen" 
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-60" 
+                 style="display: none;"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0">
+                 
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 relative" @click.away="closeModal()">
+                    <h3 class="text-lg font-bold mb-4">Pilih Reward</h3>
+                    <div class="space-y-3 mb-6">
+                        <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                            <input type="radio" value="diskon" x-model="tempReward" class="mr-3 text-[#3b66ff]">
+                            <div><p class="font-bold text-sm text-gray-800">Diskon Tunai Rp 10.000</p></div>
+                        </label>
+                        <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                            <input type="radio" value="parfum" x-model="tempReward" class="mr-3 text-[#3b66ff]">
+                            <div><p class="font-bold text-sm text-gray-800">Free Parfum (8 Poin)</p></div>
+                        </label>
                     </div>
-                    <p class="text-xs text-gray-500 mt-1 font-bold">Tukar 8 Poin dengan:</p>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" @click="closeModal()" class="px-4 py-2 bg-gray-200 rounded font-bold text-gray-700">Batal</button>
+                        <button type="button" @click="applyReward()" class="px-4 py-2 bg-blue-600 text-white rounded font-bold">Terapkan</button>
+                    </div>
                 </div>
+            </div>
+        </div>
 
-                {{-- FORM CLAIM --}}
-                <form id="formClaimReward" action="{{ route('members.claim') }}" method="POST">
-                    @csrf
-                    <input type="hidden" name="member_id" value="{{ $order->customer->member->id }}">
-                    <input type="hidden" name="order_id" value="{{ $order->id }}">
-
-                    {{-- Pilihan Reward --}}
-                    <div class="mb-6">
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Pilih Reward</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            
-                            <label class="cursor-pointer">
-                                <input type="radio" name="reward_item" value="Diskon 10k" class="peer sr-only" checked>
-                                <div class="p-3 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 hover:bg-gray-50 transition">
-                                    <span class="font-bold text-sm block">Diskon 10k</span>
-                                    <span class="text-xs opacity-80 block mt-1">Potongan Harga</span>
-                                </div>
-                            </label>
-
-                            <label class="cursor-pointer">
-                                <input type="radio" name="reward_item" value="Gratis Cuci 3kg" class="peer sr-only">
-                                <div class="p-3 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 hover:bg-gray-50 transition">
-                                    <span class="font-bold text-sm block">Gratis 3kg</span>
-                                    <span class="text-xs opacity-80 block mt-1">Layanan Regular</span>
-                                </div>
-                            </label>
-
-                            <label class="cursor-pointer">
-                                <input type="radio" name="reward_item" value="Merchandise" class="peer sr-only">
-                                <div class="p-3 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 hover:bg-gray-50 transition">
-                                    <span class="font-bold text-sm block">Merchandise</span>
-                                    <span class="text-xs opacity-80 block mt-1">Mug / Kaos</span>
-                                </div>
-                            </label>
-
-                             <label class="cursor-pointer">
-                                <input type="radio" name="reward_item" value="Voucher Next" class="peer sr-only">
-                                <div class="p-3 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 hover:bg-gray-50 transition">
-                                    <span class="font-bold text-sm block">Voucher</span>
-                                    <span class="text-xs opacity-80 block mt-1">Next Order</span>
-                                </div>
-                            </label>
-
+        {{-- MODAL INVOICE POPUP (Manual JS) --}}
+        <div id="modal-invoice" class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900 bg-opacity-90" style="display: none;">
+            <div class="bg-white p-0 rounded-lg shadow-2xl overflow-hidden max-w-2xl w-full mx-4 relative">
+                <div id="invoice-content" class="bg-white p-6 invoice-area text-xs leading-snug text-black">
+                    <div class="text-center mb-2">
+                        <div class="flex justify-center mb-2"><img src="https://via.placeholder.com/50" alt="Logo" class="h-12 w-12 rounded-full"></div>
+                        <h2 class="text-xl font-bold tracking-widest uppercase mb-1">LOUWES CARE</h2>
+                        <p class="font-bold text-[10px] text-gray-600 uppercase tracking-wide">SHOE LAUNDRY & CARE</p>
+                        <p class="text-[9px] mt-1 text-gray-500">Jl. Ringroad Timur No 9, Plumbon, Banguntapan, Bantul, DIY 55196</p>
+                        <p class="text-[9px] text-gray-500">Instagram: @Louwes Shoes Care | WA: 081390154885</p>
+                    </div>
+                    <div class="thick-line mb-3"></div>
+                    <div class="flex justify-between items-end mb-4">
+                        <div class="text-sm font-bold">
+                            CS Masuk: <span id="inv-cs-masuk" class="font-normal"></span><br>
+                            CS Keluar: <span id="inv-cs-keluar" class="font-normal"></span>
+                        </div>
+                        <div class="text-2xl font-bold tracking-widest">INVOICE</div>
+                    </div>
+                    <div class="border-b border-black mb-2"></div>
+                    <div class="flex justify-between items-start mb-4 text-[11px]">
+                        <div class="w-1/2">
+                            <div class="font-bold mb-1">CUSTOMER:</div>
+                            <div id="inv-cust-name" class="uppercase font-bold text-sm"></div>
+                            <div id="inv-cust-hp"></div>
+                        </div>
+                        <div class="w-1/2 text-right">
+                            <div class="font-bold mb-1">DETAILS:</div>
+                            <div>No: <span id="inv-no" class="font-bold"></span></div>
+                            <div>Date: <span id="inv-date"></span></div>
                         </div>
                     </div>
-
-                    {{-- Footer Buttons --}}
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" onclick="closeClaimModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200">Batal</button>
-                        <button type="submit" class="px-6 py-2 bg-[#3b66ff] text-white rounded-lg font-bold shadow-lg hover:bg-blue-700">Klaim</button>
+                    <div class="mb-4">
+                        <table class="w-full text-left text-[10px]">
+                            <thead>
+                                <tr class="dashed-line text-gray-600 uppercase">
+                                    <th class="py-2 w-3/12">ITEM</th>
+                                    <th class="py-2 w-2/12">CATATAN</th>
+                                    <th class="py-2 w-3/12">TREATMENT</th>
+                                    <th class="py-2 w-2/12 text-center">KELUAR</th>
+                                    <th class="py-2 w-2/12 text-right">HARGA</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inv-items-body" class="dashed-line"></tbody>
+                        </table>
                     </div>
-                </form>
+                    <div class="flex justify-end mb-6">
+                        <div class="w-1/2">
+                            <table class="w-full text-[11px]">
+                                <tr><td class="py-1 text-gray-600">Subtotal</td><td class="py-1 text-right" id="inv-subtotal"></td></tr>
+                                <tr class="dashed-line"><td class="py-1 text-gray-600">Diskon</td><td class="py-1 text-right" id="inv-discount"></td></tr>
+                                <tr><td class="py-2 font-bold text-sm">TOTAL</td><td class="py-2 font-bold text-sm text-right" id="inv-total"></td></tr>
+                                <tr><td class="py-1 font-bold text-green-600 uppercase" id="inv-status"></td><td class="py-1 text-right text-green-600 text-[10px]" id="inv-method"></td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="dashed-line mb-3"></div>
+                    <div class="flex justify-between items-start gap-4 text-[9px] text-gray-700">
+                        <div class="w-1/2">
+                            <p class="font-bold mb-1">"Jika sudah tanggal deadline tetapi belum kami hubungi, mohon WA kami"</p>
+                            <p class="italic">*Simpan nota ini sebagai bukti pengambilan</p>
+                            <div id="inv-claim-msg" class="mt-2 font-bold border border-black p-1 text-center hidden"></div>
+                        </div>
+                        <div class="w-1/2">
+                            <p class="font-bold underline mb-1">NB (Syarat & Ketentuan):</p>
+                            <ul class="list-disc pl-3 leading-tight space-y-0.5">
+                                <li>Pengambilan barang wajib menyertakan Nota asli.</li>
+                                <li>Komplain maksimal 1x24 jam setelah barang diambil.</li>
+                                <li>Barang yang tidak diambil lebih dari 30 hari, kerusakan/kehilangan di luar tanggung jawab kami.</li>
+                                <li>Segala resiko luntur/susut karena sifat bahan sepatu, di luar tanggung jawab kami.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="text-center mt-6 text-[10px] text-gray-500">-- Terima Kasih --</div>
+                </div>
+                <div class="bg-gray-100 p-4 flex gap-2 no-print border-t">
+                    <button type="button" onclick="window.shareWhatsapp()" class="flex-1 bg-green-500 text-white py-2 rounded font-bold hover:bg-green-600">Share WA</button>
+                    <button type="button" onclick="window.printInvoice()" class="flex-1 bg-gray-800 text-white py-2 rounded font-bold hover:bg-black">Cetak</button>
+                    {{-- TOMBOL TUTUP REDIRECT --}}
+                    <button type="button" onclick="window.location.href = '{{ route('pesanan.index') }}'" class="flex-1 bg-red-100 text-red-600 py-2 rounded font-bold">Tutup</button>
+                </div>
             </div>
         </div>
     </div>
-    @endif
 
-    {{-- SCRIPT UNTUK MODAL KLAIM REWARD --}}
+    {{-- SCRIPT JS --}}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        function openClaimModal() {
-            document.getElementById('modal-claim-reward').classList.remove('hidden');
+        const rupiahFormatter = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 });
+
+        // 1. UPDATE ORDER (AJAX)
+        window.updateOrder = function(shouldPrint) {
+            let csKeluar = document.getElementById('kasir_keluar').value;
+            if(shouldPrint && !csKeluar) {
+                alert("Harap pilih CS Keluar sebelum mencetak nota!");
+                return;
+            }
+
+            let formData = $('#editOrderForm').serialize();
+            
+            $.ajax({
+                url: "{{ route('pesanan.update', $order->id) }}",
+                type: "POST", 
+                data: formData,
+                dataType: 'json',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function(response) {
+                    if(response.status === 'success') {
+                        if(shouldPrint) {
+                            populateInvoice(response);
+                            document.getElementById('modal-invoice').style.display = 'flex'; // Manual Show
+                        } else {
+                            alert('Perubahan berhasil disimpan!');
+                            window.location.href = '{{ route("pesanan.index") }}'; // Redirect jika cuma simpan
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    alert("Gagal update: " + (xhr.responseJSON ? xhr.responseJSON.message : xhr.statusText));
+                }
+            });
         }
 
-        function closeClaimModal() {
-            document.getElementById('modal-claim-reward').classList.add('hidden');
+        // 2. POPULATE INVOICE
+        function populateInvoice(data) {
+            let order = data.order; 
+            let originalTotal = data.original_total; 
+            let discountAmount = data.discount_amount;
+            let claimType = data.claim_type;
+
+            $('#inv-cs-masuk').text(order.kasir || '-');
+            $('#inv-cs-keluar').text(order.kasir_keluar || '-');
+            $('#inv-cust-name').text(order.customer.nama);
+            $('#inv-cust-hp').text(order.customer.no_hp);
+            $('#inv-no').text(order.no_invoice);
+            
+            let date = new Date(order.created_at);
+            let dateStr = date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            $('#inv-date').text(dateStr);
+
+            let rows = '';
+            order.details.forEach(item => {
+                let estStr = '-';
+                if(item.estimasi_keluar) {
+                    let estDate = new Date(item.estimasi_keluar);
+                    estStr = estDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                }
+                let catatan = item.catatan ? item.catatan : '-';
+
+                rows += `<tr>
+                    <td class="align-top border-b border-gray-100 py-1 pr-1"><span class="font-bold">${item.nama_barang}</span></td>
+                    <td class="align-top border-b border-gray-100 py-1 text-[10px]">${item.layanan}</td>
+                    <td class="align-top border-b border-gray-100 py-1 text-center text-[10px]">${estStr}</td>
+                    <td class="align-top border-b border-gray-100 py-1 text-right">${rupiahFormatter.format(item.harga)}</td>
+                </tr>`;
+            });
+            $('#inv-items-body').html(rows);
+
+            $('#inv-subtotal').text(rupiahFormatter.format(originalTotal));
+            $('#inv-discount').text('- ' + rupiahFormatter.format(discountAmount));
+            $('#inv-total').text(rupiahFormatter.format(order.total_harga));
+            $('#inv-status').text(order.status_pembayaran ? order.status_pembayaran.toUpperCase() : '-');
+            
+            let method = order.metode_pembayaran ? 'via ' + order.metode_pembayaran : '';
+            $('#inv-method').text(method);
+
+            let msgDiv = $('#inv-claim-msg');
+            if (claimType === 'Diskon') { msgDiv.text('*** DISKON POIN DIGUNAKAN ***').removeClass('hidden'); }
+            else if (claimType === 'Parfum') { msgDiv.text('*** FREE PARFUM CLAIMED ***').removeClass('hidden'); }
+            else { msgDiv.addClass('hidden'); }
+        }
+
+        // 3. PRINT WINDOW
+        window.printInvoice = function() {
+            var content = document.getElementById('invoice-content').innerHTML;
+            var mywindow = window.open('', 'PRINT', 'height=600,width=400');
+            mywindow.document.write('<html><head><title>Invoice</title>');
+            mywindow.document.write(`
+                <style>
+                    body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 12px; margin: 0; padding: 10px; color: #000; }
+                    .text-center { text-align: center; } .text-right { text-align: right; }
+                    .font-bold { font-weight: bold; } .uppercase { text-transform: uppercase; }
+                    .italic { font-style: italic; } .hidden { display: none; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+                    td, th { vertical-align: top; padding: 2px 0; }
+                    .w-4\\/12 { width: 35%; } .w-3\\/12 { width: 25%; } .w-2\\/12 { width: 15%; }
+                    .text-\\[10px\\] { font-size: 10px; } .text-\\[9px\\] { font-size: 9px; }
+                    .dashed-line { border-bottom: 1px dashed #000; }
+                    .thick-line { border-bottom: 2px solid #000; }
+                    .border-b { border-bottom: 1px solid #000; }
+                    ul { padding-left: 15px; margin: 5px 0; }
+                    .flex { display: flex; justify-content: space-between; align-items: flex-end; }
+                </style>
+            `);
+            mywindow.document.write('</head><body>');
+            mywindow.document.write(content);
+            mywindow.document.write('</body></html>');
+            mywindow.document.close(); mywindow.focus(); 
+            setTimeout(function() { mywindow.print(); mywindow.close(); }, 500);
+        }
+
+        function formatRupiahInput(input) {
+            let value = input.value.replace(/[^0-9]/g, '');
+            if (value) {
+                input.value = new Intl.NumberFormat('id-ID').format(value);
+            } else {
+                input.value = '';
+            }
         }
     </script>
 </x-app-layout>

@@ -1,44 +1,23 @@
 <x-app-layout>
-    {{-- 1. STYLE: Hapus @media print, kita pakai JS untuk cetak --}}
+    {{-- 1. STYLE: CSS Khusus Nota --}}
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap');
         .invoice-font { font-family: 'Courier Prime', monospace; }
+        
+        /* Font Nota mirip gambar referensi */
+        .invoice-area { font-family: 'Helvetica', 'Arial', sans-serif; }
+        .dashed-line { border-bottom: 1px dashed #000; }
+        .thick-line { border-bottom: 2px solid #000; }
+
         .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Hide scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 
-    {{-- 2. INISIALISASI DATA ALPINE --}}
-    <div id="main-app" 
-         x-data="{ 
-            showPaymentModal: false, 
-            showInvoiceModal: false, 
-            paymentMethod: 'Tunai',   
-            paymentStatus: 'Lunas',   
-            totalPrice: 0, 
-            cashAmount: 0,
-            discountReward: 0,
-            claimType: '',
-            
-            get finalBill() { return Math.max(0, this.totalPrice - this.discountReward); },
-            get change() { return Math.max(0, this.cashAmount - this.finalBill); },
-            
-            formatRupiah(number) {
-                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
-            },
-
-            calculateTotal() {
-                let total = 0;
-                document.querySelectorAll('.harga-input').forEach(input => {
-                    let val = parseInt(input.value.replace(/\./g, '')) || 0;
-                    total += val;
-                });
-                this.totalPrice = total;
-                if(this.paymentStatus === 'Lunas') { this.cashAmount = this.finalBill; }
-            }
-        }" 
-        @set-reward.window="claimType = $event.detail.type; discountReward = $event.detail.discount; calculateTotal();"
-        @open-invoice.window="showPaymentModal = false; showInvoiceModal = true;"
-        class="min-h-screen bg-white p-4 md:p-8">
+    {{-- 2. WRAPPER UTAMA --}}
+    <div id="main-app" class="min-h-screen bg-white p-4 md:p-8">
 
         {{-- HEADER --}}
         <div class="flex flex-wrap items-center gap-3 md:gap-4 mb-6 md:mb-10">
@@ -52,14 +31,18 @@
         <form id="orderForm" method="POST" onsubmit="event.preventDefault();">
             @csrf
             
+            {{-- Hidden Inputs Global --}}
             <input type="hidden" name="tipe_customer" id="tipe_customer_input" value="{{ $status ?? 'Baru' }}">
             <input type="hidden" name="is_registered_member" id="is_registered_member" value="{{ $is_member ?? 0 }}">
             <input type="hidden" name="member_id" id="member_id" value="{{ $customer->member->id ?? '' }}">
-            <input type="hidden" name="metode_pembayaran" x-model="paymentMethod">
-            <input type="hidden" name="status_pembayaran" x-model="paymentStatus">
-            <input type="hidden" name="claim_type" x-model="claimType">
+            
+            {{-- Input yang diatur via JS --}}
+            <input type="hidden" name="metode_pembayaran" id="input_metode_pembayaran" value="Tunai">
+            <input type="hidden" name="status_pembayaran" id="input_status_pembayaran" value="Lunas">
+            <input type="hidden" name="claim_type" id="input_claim_type" value="">
+            <input type="hidden" id="input_discount_amount" value="0"> {{-- Helper untuk JS --}}
 
-            {{-- INPUT CUSTOMER --}}
+            {{-- DATA PELANGGAN --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="bg-[#E0E0E0] rounded-lg p-3 px-5 hover:shadow-md transition">
                     <label class="block text-sm font-semibold text-gray-600 mb-1">Nama Customer</label>
@@ -79,7 +62,7 @@
                 </div>
             </div>
 
-            {{-- ITEM & CS --}}
+            {{-- JUMLAH ITEM & CS --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="bg-[#E0E0E0] rounded-lg p-3 px-5 flex justify-between items-center hover:shadow-md transition">
                     <label class="text-sm font-semibold text-gray-600">Jumlah Sepatu</label>
@@ -91,31 +74,28 @@
                     </div>
                 </div>
                 <div class="bg-[#E0E0E0] rounded-lg p-3 px-5 flex flex-col justify-center hover:shadow-md transition">
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">Cs</label>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Cs Masuk</label>
                     <select name="cs" class="w-full bg-transparent border-none p-0 focus:ring-0 text-gray-800 font-medium cursor-pointer">
                         <option value="Admin 1">Admin 1</option>
                         <option value="Admin 2">Admin 2</option>
+                        <option value="CS Naufal">CS Naufal</option>
                     </select>
                 </div>
             </div>
 
-            {{-- CONTAINER ITEM --}}
+            {{-- CONTAINER INPUT ITEM --}}
             <div id="itemsContainer" class="space-y-6 mb-6">
                 <div class="item-group bg-[#E0E0E0] p-4 rounded-xl shadow-sm relative group animate-fade-in hover:shadow-md transition">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pb-4 border-b border-gray-400">
                         <div>
                             <label class="block text-xs font-bold text-gray-600 mb-1">Item Name (Sepatu)</label>
-                            <input type="text" 
-                                   class="main-item-input w-full bg-white/50 border border-gray-400 rounded-md p-2 text-sm font-bold text-gray-800 focus:ring-0 focus:border-blue-500 placeholder-gray-500" 
-                                   placeholder="Nama Barang (Cth: Nike Air Jordan)..."
-                                   oninput="syncMainInputs(this, 'hidden-item')">
+                            <input type="text" class="main-item-input w-full bg-white/50 border border-gray-400 rounded-md p-2 text-sm font-bold text-gray-800 focus:ring-0 focus:border-blue-500 placeholder-gray-500" 
+                                   placeholder="Nama Barang (Cth: Nike Air Jordan)..." oninput="syncMainInputs(this, 'hidden-item')">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-600 mb-1">Catatan Umum</label>
-                            <input type="text" 
-                                   class="main-catatan-input w-full bg-white/50 border border-gray-400 rounded-md p-2 text-sm font-medium text-gray-800 focus:ring-0 focus:border-blue-500 placeholder-gray-500" 
-                                   placeholder="Catatan kondisi sepatu..."
-                                   oninput="syncMainInputs(this, 'hidden-catatan')">
+                            <input type="text" class="main-catatan-input w-full bg-white/50 border border-gray-400 rounded-md p-2 text-sm font-medium text-gray-800 focus:ring-0 focus:border-blue-500 placeholder-gray-500" 
+                                   placeholder="Catatan kondisi sepatu..." oninput="syncMainInputs(this, 'hidden-catatan')">
                         </div>
                     </div>
 
@@ -124,14 +104,13 @@
                         <div class="treatment-row grid grid-cols-1 md:grid-cols-12 gap-3 bg-white p-3 rounded-lg border border-gray-300 relative shadow-sm">
                             <input type="hidden" name="item[]" class="hidden-item">
                             <input type="hidden" name="catatan[]" class="hidden-catatan">
+                            
                             <div class="md:col-span-3">
                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">Kategori</label>
                                 <select class="category-select w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 text-xs font-medium text-gray-800 cursor-pointer focus:ring-blue-500" onchange="filterTreatments(this)">
                                     <option value="">- Pilih -</option>
                                     @foreach($treatments->pluck('kategori')->unique()->values() as $kategori)
-                                        @if(!empty($kategori))
-                                            <option value="{{ $kategori }}">{{ $kategori }}</option>
-                                        @endif
+                                        @if(!empty($kategori))<option value="{{ $kategori }}">{{ $kategori }}</option>@endif
                                     @endforeach
                                 </select>
                             </div>
@@ -149,7 +128,10 @@
                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">Harga</label>
                                 <div class="relative">
                                     <span class="absolute left-2 top-1.5 text-xs font-bold text-gray-500">Rp</span>
-                                    <input type="text" name="harga[]" class="harga-input w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 pl-7 text-xs font-bold text-gray-800 focus:ring-blue-500" placeholder="0">
+                                    <input type="text" name="harga[]" 
+                                           class="harga-input w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 pl-7 text-xs font-bold text-gray-800 focus:ring-blue-500" 
+                                           placeholder="0"
+                                           oninput="formatRupiahInput(this)">
                                 </div>
                             </div>
                             <button type="button" onclick="window.removeTreatment(this)" class="btn-remove-treatment absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-0.5 shadow-md hidden group-hover:block z-10">
@@ -166,21 +148,17 @@
                 </div>
             </div>
 
-            {{-- BOX INFO --}}
+            {{-- BOX INFO POIN --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div id="box-point" class="bg-[#E0E0E0] rounded-lg p-2 pl-24 h-full w-full flex flex-col justify-center items-center md:col-start-5 {{ ($is_member ?? false) ? '' : 'hidden' }}">
                     <label class=" text-sm font-semibold text-gray-600 mb-1 "> Point </label>
                     <div class="flex items-center gap-3">
                         <span id="poin-text" class="text-gray-800 font-bold text-lg">{{ $poin ?? 0 }}/8</span>
-                        <button type="button" id="btn-claim" onclick="window.claimReward()" 
-                                class="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded shadow hover:bg-blue-700 transition {{ ($poin ?? 0) >= 8 ? '' : 'hidden' }}">
-                            Claim
-                        </button>
-                        <template x-if="claimType">
-                            <span class="text-[10px] bg-green-500 text-white px-2 py-1 rounded-full animate-pulse" x-text="claimType === 'diskon' ? 'Reward: Diskon 10rb' : 'Reward: Free Parfum'"></span>
-                        </template>
+                        <button type="button" id="btn-claim" onclick="window.openClaimModal()" class="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded shadow hover:bg-blue-700 transition {{ ($poin ?? 0) >= 8 ? '' : 'hidden' }}">Claim</button>
+                        <span id="reward-badge" class="text-[10px] bg-green-500 text-white px-2 py-1 rounded-full animate-pulse hidden"></span>
                     </div>
                 </div>
+                
                 <div id="box-tipe-customer" class="bg-[#E0E0E0] rounded-lg p-3 px-5 {{ ($status ?? 'New Customer') == 'New Customer' ? '' : 'hidden' }}">
                     <label class="block text-sm font-semibold text-gray-600 mb-1">Tipe Customer</label>
                     <input type="text" id="display_tipe_customer" value="{{ $status ?? 'Baru' }}" readonly class="w-full bg-transparent border-none p-0 focus:ring-0 text-gray-800 font-medium">
@@ -199,112 +177,144 @@
                 </div>
             </div>
 
-            {{-- FOOTER --}}
+            {{-- FOOTER BUTTONS --}}
             <div class="flex justify-end gap-4">
                 <button type="button" id="btn-daftar-member" onclick="window.openMemberModal()" class="bg-[#3b66ff] text-white px-10 py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition {{ ($is_member ?? false) ? 'hidden' : '' }}">MEMBER</button>
-                <button type="button" x-on:click="calculateTotal(); showPaymentModal = true" class="bg-[#3b66ff] text-white px-12 py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition transform hover:scale-105">PROSES PEMBAYARAN</button>
+                
+                {{-- TOMBOL PROSES (MANUAL JS) --}}
+                <button type="button" onclick="window.openPaymentModal()" class="bg-[#3b66ff] text-white px-12 py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition transform hover:scale-105">PROSES PEMBAYARAN</button>
             </div>
 
-            {{-- 3. MODAL PAYMENT (Diberi ID 'modal-payment' untuk akses manual) --}}
-            <div id="modal-payment"
-                 x-show="showPaymentModal" 
-                 class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-60" 
-                 style="display: none;">
-                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" @click.away="showPaymentModal = false">
-                    <div class="bg-[#3b66ff] p-4 flex justify-between items-center"><h3 class="text-white font-bold text-lg">Rincian Pembayaran</h3><button type="button" x-on:click="showPaymentModal = false" class="text-white font-bold text-2xl">&times;</button></div>
+            {{-- 3. MODAL PAYMENT (MANUAL) --}}
+            <div id="modal-payment" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-60 hidden">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+                    <div class="bg-[#3b66ff] p-4 flex justify-between items-center"><h3 class="text-white font-bold text-lg">Rincian Pembayaran</h3><button type="button" onclick="window.closePaymentModal()" class="text-white font-bold text-2xl">&times;</button></div>
                     <div class="p-6">
                         <div class="mb-6 bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
                             <span class="text-xs text-blue-600 font-bold uppercase">Total Tagihan</span>
-                            <div class="text-3xl font-black text-[#3b66ff] mt-1" x-text="formatRupiah(finalBill)"></div>
-                            <template x-if="discountReward > 0">
-                                <p class="text-[10px] text-green-600 font-bold mt-1 italic">* Sudah dipotong Diskon Reward Rp 10.000</p>
-                            </template>
+                            <div class="text-3xl font-black text-[#3b66ff] mt-1" id="display-total-bill">Rp 0</div>
+                            <p id="display-discount-msg" class="text-[10px] text-green-600 font-bold mt-1 italic hidden">* Sudah dipotong Diskon Reward Rp 10.000</p>
                         </div>
                         <div class="mb-4">
                             <label class="block text-sm font-bold text-gray-700 mb-2">Pilih Metode</label>
                             <div class="grid grid-cols-3 gap-2">
-                                <label class="cursor-pointer"><input type="radio" value="Tunai" x-model="paymentMethod" class="peer sr-only"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white hover:bg-gray-50 font-bold text-sm">Tunai</div></label>
-                                <label class="cursor-pointer"><input type="radio" value="Transfer" x-model="paymentMethod" class="peer sr-only"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white hover:bg-gray-50 font-bold text-sm">Transfer</div></label>
-                                <label class="cursor-pointer"><input type="radio" value="QRIS" x-model="paymentMethod" class="peer sr-only"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white hover:bg-gray-50 font-bold text-sm">QRIS</div></label>
+                                <label class="cursor-pointer"><input type="radio" name="ui_payment_method" value="Tunai" checked onclick="setPaymentMethod('Tunai')" class="peer sr-only"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white hover:bg-gray-50 font-bold text-sm">Tunai</div></label>
+                                <label class="cursor-pointer"><input type="radio" name="ui_payment_method" value="Transfer" onclick="setPaymentMethod('Transfer')" class="peer sr-only"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white hover:bg-gray-50 font-bold text-sm">Transfer</div></label>
+                                <label class="cursor-pointer"><input type="radio" name="ui_payment_method" value="QRIS" onclick="setPaymentMethod('QRIS')" class="peer sr-only"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white hover:bg-gray-50 font-bold text-sm">QRIS</div></label>
                             </div>
                         </div>
                         <div class="mb-4">
                             <label class="block text-sm font-bold text-gray-700 mb-2">Status Pembayaran</label>
                             <div class="grid grid-cols-2 gap-2">
-                                <label class="cursor-pointer"><input type="radio" value="Lunas" x-model="paymentStatus" class="peer sr-only" x-on:click="cashAmount = finalBill"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-green-600 peer-checked:text-white font-bold text-sm">Lunas</div></label>
-                                <label class="cursor-pointer"><input type="radio" value="DP" x-model="paymentStatus" class="peer sr-only" x-on:click="cashAmount = 0"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-yellow-500 peer-checked:text-white font-bold text-sm">DP</div></label>
+                                <label class="cursor-pointer"><input type="radio" name="ui_payment_status" value="Lunas" checked onclick="setPaymentStatus('Lunas')" class="peer sr-only"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-green-600 peer-checked:text-white font-bold text-sm">Lunas</div></label>
+                                <label class="cursor-pointer"><input type="radio" name="ui_payment_status" value="DP" onclick="setPaymentStatus('DP')" class="peer sr-only"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-yellow-500 peer-checked:text-white font-bold text-sm">DP</div></label>
                             </div>
                         </div>
                         <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                            <label class="block text-sm font-bold text-gray-700 mb-1" x-text="paymentStatus === 'DP' ? 'Nominal DP' : 'Uang Diterima'"></label>
-                            <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">Rp</span><input type="number" name="paid_amount" class="pl-10 block w-full rounded-lg border-gray-300 font-bold text-lg" x-model.number="cashAmount" placeholder="0"></div>
-                            <div class="mt-3 flex justify-between items-center pt-3 border-t border-gray-200"><span class="text-sm text-gray-500 font-bold">Kembalian:</span><span class="font-black text-green-600 text-xl" x-text="formatRupiah(change)"></span></div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1" id="label-pay-amount">Uang Diterima</label>
+                            <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">Rp</span><input type="number" name="paid_amount" id="input_paid_amount" class="pl-10 block w-full rounded-lg border-gray-300 font-bold text-lg" placeholder="0" oninput="calculateChange()"></div>
+                            <div class="mt-3 flex justify-between items-center pt-3 border-t border-gray-200"><span class="text-sm text-gray-500 font-bold">Kembalian:</span><span id="display-change" class="font-black text-green-600 text-xl">Rp 0</span></div>
                         </div>
                         <div class="flex justify-end space-x-3">
-                            <button type="button" x-on:click="showPaymentModal = false" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg font-bold">Batal</button>
+                            <button type="button" onclick="window.closePaymentModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg font-bold">Batal</button>
                             <button type="button" onclick="window.submitOrder()" class="px-6 py-2 bg-[#3b66ff] text-white rounded-lg font-bold shadow-lg">PROSES & CETAK</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {{-- 4. MODAL INVOICE POPUP (Diberi ID 'modal-invoice' untuk akses manual) --}}
-            <div id="modal-invoice"
-                 x-show="showInvoiceModal" 
-                 @click.self="window.location.href = '{{ route('pesanan.index') }}'"
-                 class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900 bg-opacity-80" 
-                 style="display: none;">
-                
-                <div class="bg-white p-0 rounded-lg shadow-2xl overflow-hidden max-w-sm w-full mx-auto relative">
-                    
-                    {{-- KONTEN NOTA (DIBERI ID UNTUK DIAMBIL JS) --}}
-                    <div id="invoice-content" class="bg-white p-5 invoice-font text-xs leading-snug">
-                        <div class="text-center mb-3">
-                             <h2 class="text-lg font-bold tracking-widest uppercase mb-1">LOUWES CARE</h2>
-                             <p class="font-bold text-[10px] text-gray-600">SHOE LAUNDRY & CARE</p>
-                             <p class="text-[9px] mt-1 text-gray-500">Jl. Ringroad Timur No 9, Banguntapan, Bantul</p>
-                             <p class="text-[9px] text-gray-500">WA: 081390154885</p>
-                             <div class="border-b-2 border-dashed border-gray-800 my-2"></div>
+            {{-- 4. MODAL INVOICE POPUP (MANUAL) --}}
+            <div id="modal-invoice" class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900 bg-opacity-90" style="display: none;">
+                <div class="bg-white p-0 rounded-lg shadow-2xl overflow-hidden max-w-2xl w-full mx-4 relative">
+                    <div id="invoice-content" class="bg-white p-6 invoice-area text-xs leading-snug text-black">
+                        <div class="text-center mb-2">
+                            <div class="flex justify-center mb-2"><img src="https://via.placeholder.com/50" alt="Logo" class="h-12 w-12 rounded-full"></div>
+                            <h2 class="text-xl font-bold tracking-widest uppercase mb-1">LOUWES CARE</h2>
+                            <p class="font-bold text-[10px] text-gray-600 uppercase tracking-wide">SHOE LAUNDRY & CARE</p>
+                            <p class="text-[9px] mt-1 text-gray-500">Jl. Ringroad Timur No 9, Plumbon, Banguntapan, Bantul, DIY 55196</p>
+                            <p class="text-[9px] text-gray-500">Instagram: @Louwes Shoes Care | WA: 081390154885</p>
                         </div>
-                        <div class="flex justify-between items-end mb-2">
-                            <div><p>CS: <span id="inv-cs"></span></p><p class="font-bold mt-1">CUSTOMER:</p><p id="inv-cust-name" class="uppercase font-bold text-sm"></p><p id="inv-cust-hp"></p></div>
-                            <div class="text-right"><h3 class="text-xl font-bold mb-1">INVOICE</h3><p id="inv-no" class="font-bold"></p><p id="inv-date"></p></div>
+                        <div class="thick-line mb-3"></div>
+                        <div class="flex justify-between items-end mb-4">
+                            <div class="text-sm font-bold">
+                                CS Masuk: <span id="inv-cs-masuk" class="font-normal"></span><br>
+                                CS Keluar: <span id="inv-cs-keluar" class="font-normal"></span>
+                            </div>
+                            <div class="text-2xl font-bold tracking-widest">INVOICE</div>
                         </div>
-                        <div class="border-y-2 border-dashed border-gray-800 py-2 mb-2">
-                             <table class="w-full text-left">
-                                 <thead>
-                                     <tr>
-                                         <th class="pb-1 w-4/12">ITEM</th>
-                                         <th class="pb-1 w-3/12">LAYANAN</th>
-                                         {{-- KOLOM BARU: ESTIMASI --}}
-                                         <th class="pb-1 w-2/12 text-center">EST</th>
-                                         <th class="pb-1 w-3/12 text-right">HARGA</th>
-                                     </tr>
-                                 </thead>
-                                 <tbody id="inv-items-body"></tbody>
-                             </table>
+                        <div class="border-b border-black mb-2"></div>
+                        <div class="flex justify-between items-start mb-4 text-[11px]">
+                            <div class="w-1/2">
+                                <div class="font-bold mb-1">CUSTOMER:</div>
+                                <div id="inv-cust-name" class="uppercase font-bold text-sm"></div>
+                                <div id="inv-cust-hp"></div>
+                            </div>
+                            <div class="w-1/2 text-right">
+                                <div class="font-bold mb-1">DETAILS:</div>
+                                <div>No: <span id="inv-no" class="font-bold"></span></div>
+                                <div>Date: <span id="inv-date"></span></div>
+                            </div>
                         </div>
-                        <div class="flex justify-end mb-3">
-                            <table class="w-full"><tr><td class="text-right pr-4">Subtotal</td><td class="text-right font-bold" id="inv-subtotal"></td></tr><tr><td class="text-right pr-4">Diskon</td><td class="text-right" id="inv-discount"></td></tr><tr class="text-lg font-bold border-t border-dashed border-gray-400"><td class="text-right pr-4 pt-1">TOTAL</td><td class="text-right pt-1" id="inv-total"></td></tr><tr><td class="text-right pr-4 pt-1 text-[10px]" id="inv-status"></td><td class="text-right pt-1 text-[10px]" id="inv-method"></td></tr></table>
+                        <div class="mb-4">
+                            <table class="w-full text-left text-[10px]">
+                                <thead>
+                                    <tr class="dashed-line text-gray-600 uppercase">
+                                        <th class="py-2 w-3/12">ITEM</th>
+                                        <th class="py-2 w-2/12">CATATAN</th>
+                                        <th class="py-2 w-3/12">TREATMENT</th>
+                                        <th class="py-2 w-2/12 text-center">KELUAR</th>
+                                        <th class="py-2 w-2/12 text-right">HARGA</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inv-items-body" class="dashed-line"></tbody>
+                            </table>
                         </div>
-                        <div id="inv-claim-msg" class="text-center font-bold border border-black p-1 mb-2 hidden"></div>
-                        <div class="text-[9px] text-center mt-4"><p class="mb-1 italic">"Jika deadline tapi belum dihubungi, mohon WA kami"</p><p class="font-bold mb-2">*Simpan nota ini sebagai bukti pengambilan</p><div class="text-left border-t border-gray-300 pt-2"><p class="font-bold underline">NB (Syarat & Ketentuan):</p><ul class="list-disc pl-3"><li>Pengambilan barang wajib menyertakan Nota asli.</li><li>Komplain maks 1x24 jam setelah ambil.</li><li>Barang tak diambil > 30 hari diluar tanggung jawab kami.</li></ul></div><p class="mt-3 font-bold text-sm">-- Terima Kasih --</p></div>
+                        <div class="flex justify-end mb-6">
+                            <div class="w-1/2">
+                                <table class="w-full text-[11px]">
+                                    <tr><td class="py-1 text-gray-600">Subtotal</td><td class="py-1 text-right" id="inv-subtotal"></td></tr>
+                                    <tr class="dashed-line"><td class="py-1 text-gray-600">Diskon</td><td class="py-1 text-right" id="inv-discount"></td></tr>
+                                    <tr><td class="py-2 font-bold text-sm">TOTAL</td><td class="py-2 font-bold text-sm text-right" id="inv-total"></td></tr>
+                                    <tr><td class="py-1 font-bold text-green-600 uppercase" id="inv-status"></td><td class="py-1 text-right text-green-600 text-[10px]" id="inv-method"></td></tr>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="dashed-line mb-3"></div>
+                        <div class="flex justify-between items-start gap-4 text-[9px] text-gray-700">
+                            <div class="w-1/2">
+                                <p class="font-bold mb-1">"Jika sudah tanggal deadline tetapi belum kami hubungi, mohon WA kami"</p>
+                                <p class="italic">*Simpan nota ini sebagai bukti pengambilan</p>
+                                <div id="inv-claim-msg" class="mt-2 font-bold border border-black p-1 text-center hidden"></div>
+                            </div>
+                            <div class="w-1/2">
+                                <p class="font-bold underline mb-1">NB (Syarat & Ketentuan):</p>
+                                <ul class="list-disc pl-3 leading-tight space-y-0.5">
+                                    <li>Pengambilan barang wajib menyertakan Nota asli.</li>
+                                    <li>Komplain maksimal 1x24 jam setelah barang diambil.</li>
+                                    <li>Barang yang tidak diambil lebih dari 30 hari, kerusakan/kehilangan di luar tanggung jawab kami.</li>
+                                    <li>Segala resiko luntur/susut karena sifat bahan sepatu, di luar tanggung jawab kami.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="text-center mt-6 text-[10px] text-gray-500">-- Terima Kasih --</div>
                     </div>
-
-                    {{-- Tombol Aksi --}}
                     <div class="bg-gray-100 p-4 flex gap-2 no-print border-t">
                         <button type="button" onclick="window.shareWhatsapp()" class="flex-1 bg-green-500 text-white py-2 rounded font-bold hover:bg-green-600">Share WA</button>
-                        {{-- Tombol Cetak Memanggil fungsi PrintInvoice --}}
                         <button type="button" onclick="window.printInvoice()" class="flex-1 bg-gray-800 text-white py-2 rounded font-bold hover:bg-black">Cetak</button>
+                        {{-- PERBAIKAN: Tombol Tutup Redirect ke Index --}}
+                        <button type="button" onclick="window.location.href = '{{ route('pesanan.index') }}'" class="flex-1 bg-red-100 text-red-600 py-2 rounded font-bold">Tutup</button>
                     </div>
                 </div>
             </div>
         </form>
     </div>
 
+    {{-- MODAL MEMBER --}}
     @include('components.member-modal')
-    <div id="modal-claim-reward" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-60 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-fade-in">
+
+    {{-- MODAL CLAIM --}}
+    <div id="modal-claim-reward" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-60 hidden" onclick="window.closeClaimModal()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-fade-in" onclick="event.stopPropagation()">
             <div class="bg-[#3b66ff] p-4 flex justify-between items-center"><h3 class="text-white font-bold text-lg">Pilih Reward</h3><button type="button" onclick="window.closeClaimModal()" class="text-white font-bold text-2xl">&times;</button></div>
             <div class="p-6">
                 <div class="mb-6 bg-blue-50 p-4 rounded-xl text-center border border-blue-100"><span class="text-xs text-blue-600 font-bold uppercase">Poin Kamu</span><div class="text-3xl font-black text-[#3b66ff] mt-1"><span id="display-poin-modal">0</span> pts</div></div>
@@ -322,181 +332,154 @@
         const rawTreatments = @json($treatments ?? []);
         const rupiahFormatter = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 });
 
+        let gTotal = 0;
+        let gDiscount = 0;
+        let gFinalBill = 0;
+
         document.addEventListener("DOMContentLoaded", () => {
             document.querySelectorAll('.item-group').forEach(group => { group.querySelectorAll('.treatment-row').forEach(row => attachEventsToTreatmentRow(row)); });
             if(document.getElementById('no_hp').value.length >= 4) { window.cekCustomer(); }
         });
 
-        // 1. SUBMIT ORDER
+        function calculateGlobalTotal() {
+            let total = 0;
+            document.querySelectorAll('.harga-input').forEach(input => {
+                let val = parseInt(input.value.replace(/\./g, '')) || 0;
+                total += val;
+            });
+            gTotal = total;
+            gDiscount = parseInt(document.getElementById('input_discount_amount').value) || 0;
+            gFinalBill = Math.max(0, gTotal - gDiscount);
+
+            $('#display-total-bill').text('Rp ' + rupiahFormatter.format(gFinalBill));
+            if(gDiscount > 0) $('#display-discount-msg').removeClass('hidden'); else $('#display-discount-msg').addClass('hidden');
+            
+            if($('#input_status_pembayaran').val() === 'Lunas') {
+                $('#input_paid_amount').val(gFinalBill);
+                calculateChange();
+            }
+        }
+
+        function calculateChange() {
+            let paid = parseInt($('#input_paid_amount').val()) || 0;
+            let change = Math.max(0, paid - gFinalBill);
+            $('#display-change').text('Rp ' + rupiahFormatter.format(change));
+        }
+
+        window.openPaymentModal = function() {
+            calculateGlobalTotal();
+            document.getElementById('modal-payment').style.display = 'flex';
+            document.getElementById('modal-payment').classList.remove('hidden');
+        }
+        window.closePaymentModal = function() {
+            document.getElementById('modal-payment').style.display = 'none';
+            document.getElementById('modal-payment').classList.add('hidden');
+        }
+        window.setPaymentMethod = function(val) { $('#input_metode_pembayaran').val(val); }
+        window.setPaymentStatus = function(val) { 
+            $('#input_status_pembayaran').val(val); 
+            $('#label-pay-amount').text(val === 'DP' ? 'Nominal DP' : 'Uang Diterima');
+            if(val === 'DP') $('#input_paid_amount').val(0);
+            else $('#input_paid_amount').val(gFinalBill);
+            calculateChange();
+        }
+
+        window.openClaimModal = function() {
+            let currentPoin = parseInt(document.getElementById('poin-text').innerText.split('/')[0]) || 0; 
+            document.getElementById('display-poin-modal').innerText = currentPoin; 
+            document.getElementById('modal-claim-reward').classList.remove('hidden'); 
+        }
+        window.closeClaimModal = function() { document.getElementById('modal-claim-reward').classList.add('hidden'); }
+        window.applyReward = function() {
+            const radio = document.querySelector('input[name="reward_option"]:checked'); 
+            if (!radio) { alert("Pilih reward dulu!"); return; }
+            
+            const choice = radio.value; 
+            const discount = (choice === 'diskon') ? 10000 : 0;
+            
+            $('#input_claim_type').val(choice);
+            $('#input_discount_amount').val(discount);
+            
+            let badgeText = choice === 'diskon' ? 'Reward: Diskon 10rb' : 'Reward: Free Parfum';
+            $('#reward-badge').text(badgeText).removeClass('hidden');
+
+            window.closeClaimModal();
+            calculateGlobalTotal();
+        }
+
         window.submitOrder = function() {
             let formData = $('#orderForm').serialize();
             $.ajax({
-                url: "{{ route('orders.store') }}", 
-                type: "POST", 
-                data: formData, 
-                dataType: 'json', 
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                url: "{{ route('orders.store') }}", type: "POST", data: formData, dataType: 'json', headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 success: function(response) {
-                    console.log("Success:", response);
                     if(response.status === 'success') {
-                        try {
-                            populateInvoice(response);
-                        } catch (e) {
-                            console.error("Error populating invoice:", e);
-                        }
-                        window.dispatchEvent(new CustomEvent('open-invoice'));
-                        document.getElementById('modal-payment').style.display = 'none'; 
+                        populateInvoice(response);
+                        window.closePaymentModal();
                         document.getElementById('modal-invoice').style.display = 'flex';
+                        document.getElementById('modal-invoice').classList.remove('hidden');
                     }
                 },
-                error: function(xhr) { 
-                    alert("Gagal menyimpan: " + (xhr.responseJSON ? xhr.responseJSON.message : xhr.responseText)); 
-                }
+                error: function(xhr) { alert("Gagal menyimpan: " + (xhr.responseJSON ? xhr.responseJSON.message : xhr.responseText)); }
             });
         }
 
-        // 2. FUNGSI PRINT INVOICE (WINDOW BARU)
-        window.printInvoice = function() {
-            // Ambil HTML dari div invoice-content
-            var content = document.getElementById('invoice-content').innerHTML;
-            
-            // Buka jendela baru
-            var mywindow = window.open('', 'PRINT', 'height=600,width=400');
-
-            mywindow.document.write('<html><head><title>Invoice</title>');
-            // Inject Style Manual agar rapi
-            mywindow.document.write(`
-                <style>
-                    body { font-family: 'Courier Prime', monospace; font-size: 12px; margin: 0; padding: 10px; color: #000; }
-                    .text-center { text-align: center; } 
-                    .text-right { text-align: right; }
-                    .font-bold { font-weight: bold; } 
-                    .uppercase { text-transform: uppercase; }
-                    .italic { font-style: italic; } 
-                    .hidden { display: none; }
-                    
-                    /* Table Layout */
-                    table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
-                    td, th { vertical-align: top; padding: 2px 0; }
-                    
-                    /* Lebar Kolom */
-                    .w-4\\/12 { width: 35%; } 
-                    .w-3\\/12 { width: 25%; } 
-                    .w-2\\/12 { width: 15%; }
-                    
-                    /* Ukuran Text */
-                    .text-\\[10px\\] { font-size: 10px; } 
-                    .text-\\[9px\\] { font-size: 9px; }
-                    
-                    /* Borders */
-                    .border-b-2 { border-bottom: 2px dashed #000; }
-                    .border-y-2 { border-top: 2px dashed #000; border-bottom: 2px dashed #000; margin: 10px 0; padding: 10px 0; }
-                    .border-t { border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px; }
-                    
-                    ul { padding-left: 15px; margin: 5px 0; }
-                </style>
-            `);
-            mywindow.document.write('</head><body>');
-            mywindow.document.write(content);
-            mywindow.document.write('</body></html>');
-
-            mywindow.document.close(); 
-            mywindow.focus(); 
-
-            setTimeout(function() {
-                mywindow.print();
-                mywindow.close();
-            }, 500);
-        }
-
-        // 3. ISI NOTA
         function populateInvoice(data) {
             let order = data.order; let cust = order.customer;
-            $('#inv-cs').text(order.kasir || '-'); 
+            $('#inv-cs-masuk').text(order.kasir || '-'); 
+            $('#inv-cs-keluar').text(order.kasir_keluar || '-');
             $('#inv-cust-name').text(cust.nama || 'Guest');
-            
-            let hp = cust.no_hp || ''; 
-            let last4 = hp.length > 4 ? hp.substring(hp.length - 4) : hp;
-            $('#inv-cust-hp').text(hp.length > 4 ? hp.substring(0, hp.length - 4) + 'xxxx' + last4 : hp);
-            
+            $('#inv-cust-hp').text(cust.no_hp || '-');
             $('#inv-no').text(order.no_invoice);
-            let date = new Date(order.created_at); 
-            $('#inv-date').text('Date: ' + date.getDate() + '/' + (date.getMonth()+1) + '/' + date.getFullYear());
+            
+            let date = new Date(order.created_at);
+            let dateStr = date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            $('#inv-date').text(dateStr);
 
-            let rows = ''; let lastItemName = null;
-            if(order.details) {
-                order.details.forEach(item => {
-                    let displayItem = '';
-                    if (item.nama_barang !== lastItemName) {
-                        let note = item.catatan ? `<br><span class="italic text-[9px] text-gray-500">(${item.catatan})</span>` : '';
-                        displayItem = `<span class="font-bold">${item.nama_barang}</span>${note}`;
-                        lastItemName = item.nama_barang;
-                    } else { displayItem = ''; }
+            let rows = '';
+            order.details.forEach(item => {
+                let estStr = '-';
+                if(item.estimasi_keluar) {
+                    let estDate = new Date(item.estimasi_keluar);
+                    estStr = estDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                }
+                let catatan = item.catatan ? item.catatan : '-';
 
-                    // Format Tanggal Estimasi (dd/mm)
-                    let estDate = item.estimasi_keluar ? new Date(item.estimasi_keluar) : null;
-                    let estStr = estDate ? `${estDate.getDate()}/${estDate.getMonth()+1}` : '-';
-
-                    rows += `
-                        <tr>
-                            <td class="align-top border-b border-gray-100 py-1 pr-1">${displayItem}</td>
-                            <td class="align-top border-b border-gray-100 py-1 text-[10px]">${item.layanan}</td>
-                            <td class="align-top border-b border-gray-100 py-1 text-center text-[10px]">${estStr}</td>
-                            <td class="align-top border-b border-gray-100 py-1 text-right">${rupiahFormatter.format(item.harga)}</td>
-                        </tr>
-                    `;
-                });
-            }
+                rows += `
+                    <tr class="align-top">
+                        <td class="py-2 font-bold pr-2">${item.nama_barang}</td>
+                        <td class="py-2 pr-2 text-gray-600 italic">${catatan}</td>
+                        <td class="py-2 pr-2">${item.layanan}</td>
+                        <td class="py-2 text-center whitespace-nowrap">${estStr}</td>
+                        <td class="py-2 text-right font-bold">${rupiahFormatter.format(item.harga)}</td>
+                    </tr>
+                `;
+            });
             $('#inv-items-body').html(rows);
 
-            $('#inv-subtotal').text('Rp ' + rupiahFormatter.format(data.original_total));
-            $('#inv-discount').text('- Rp ' + rupiahFormatter.format(data.discount_amount));
-            $('#inv-total').text('Rp ' + rupiahFormatter.format(order.total_harga));
+            $('#inv-subtotal').text(rupiahFormatter.format(data.original_total));
+            $('#inv-discount').text('- ' + rupiahFormatter.format(data.discount_amount));
+            $('#inv-total').text(rupiahFormatter.format(order.total_harga));
             $('#inv-status').text(order.status_pembayaran ? order.status_pembayaran.toUpperCase() : '-');
-            $('#inv-method').text('via ' + (order.metode_pembayaran || '-'));
+            let method = order.metode_pembayaran ? 'via ' + order.metode_pembayaran : '';
+            $('#inv-method').text(method);
 
-            if(data.discount_amount > 0) { $('#inv-claim-msg').text('*** DISKON POINT DIGUNAKAN ***').removeClass('hidden'); }
-            else if (order.catatan && order.catatan.includes('FREE PARFUM')) { $('#inv-claim-msg').text('*** FREE PARFUM CLAIMED ***').removeClass('hidden'); }
-            else { $('#inv-claim-msg').addClass('hidden'); }
+            let msgDiv = $('#inv-claim-msg');
+            if (data.claim_type === 'Diskon') { msgDiv.text('*** DISKON POIN DIGUNAKAN ***').removeClass('hidden'); }
+            else if (data.claim_type === 'Parfum') { msgDiv.text('*** FREE PARFUM CLAIMED ***').removeClass('hidden'); }
+            else { msgDiv.addClass('hidden'); }
+        }
+
+        window.printInvoice = function() {
+            var content = document.getElementById('invoice-content').innerHTML;
+            var mywindow = window.open('', 'PRINT', 'height=600,width=400');
+            mywindow.document.write('<html><head><title>Invoice</title><style>body{font-family:"Helvetica","Arial",sans-serif;font-size:12px;margin:0;padding:10px;color:#000}.text-center{text-align:center}.text-right{text-align:right}.font-bold{font-weight:700}.uppercase{text-transform:uppercase}.italic{font-style:italic}.hidden{display:none}table{width:100%;border-collapse:collapse;margin-bottom:5px}td,th{vertical-align:top;padding:2px 0}.w-4\\/12{width:35%}.w-3\\/12{width:25%}.w-2\\/12{width:15%}.text-\\[10px\\]{font-size:10px}.text-\\[9px\\]{font-size:9px}.dashed-line{border-bottom:1px dashed #000}.thick-line{border-bottom:2px solid #000}.border-b{border-bottom:1px solid #000}ul{padding-left:15px;margin:5px 0}.flex{display:flex;justify-content:space-between;align-items:flex-end}</style></head><body>' + content + '</body></html>');
+            mywindow.document.close(); mywindow.focus(); setTimeout(function() { mywindow.print(); mywindow.close(); }, 500);
         }
 
         window.shareWhatsapp = function() {
             let no = $('#inv-no').text(); let total = $('#inv-total').text(); let name = $('#inv-cust-name').text();
             let text = `Halo Kak ${name}, Terima kasih telah mempercayakan sepatu kakak di Louwes Care. \nNo Nota: ${no} \nTotal: ${total}. \n\nSimpan pesan ini sebagai bukti pengambilan ya kak!`;
             window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-        }
-
-        // 3. LOGIKA LAINNYA
-        let timeout = null;
-        window.cekCustomer = function() {
-            let noHp = document.getElementById('no_hp').value; let btnDaftar = document.getElementById('btn-daftar-member');
-            if(noHp.length < 4) { resetToDefault(); return; }
-            clearTimeout(timeout);
-            timeout = setTimeout(function () {
-                $.post("{{ route('check.customer') }}", { _token: "{{ csrf_token() }}", no_hp: noHp }, function(response) {
-                    if (response.found) {
-                        $('#nama_customer').val(response.nama);
-                        let badgeColor = response.tipe === 'Member' ? 'text-pink-600 bg-pink-100 border-pink-200' : 'text-green-600 bg-green-100 border-green-200';
-                        $('#badge-status').text(response.tipe).attr('class', `text-xl font-bold px-3 py-1 rounded-full border ${badgeColor}`);
-                        $('#tipe_customer_input').val(response.tipe); $('#box-tipe-customer').addClass('hidden'); 
-                        if(response.tipe === 'Member') {
-                            $('#box-point').removeClass('hidden'); $('#member_id').val(response.member_id); $('#is_registered_member').val(1); $('#box-sumber-info').addClass('hidden'); if(btnDaftar) btnDaftar.classList.add('hidden');
-                            let poin = parseInt(response.poin) || 0; $('#poin-text').text(`${poin}/8`);
-                            if (poin >= 8) { $('#btn-claim').removeClass('hidden'); } else { $('#btn-claim').addClass('hidden'); }
-                        } else { resetMemberUI(); $('#badge-status').text('Repeat Order'); }
-                    } else { resetToDefault(); }
-                });
-            }, 500);
-        }
-        function resetToDefault() { $('#badge-status').text('Baru').attr('class', 'text-xl font-bold px-3 py-1 rounded-full border text-blue-600 bg-blue-100 border-blue-200'); $('#tipe_customer_input').val('Baru'); $('#box-tipe-customer').removeClass('hidden'); $('#box-sumber-info').removeClass('hidden'); resetMemberUI(); }
-        function resetMemberUI() { $('#box-point').addClass('hidden'); $('#btn-claim').addClass('hidden'); $('#member_id').val(''); $('#is_registered_member').val(0); let btnDaftar = document.getElementById('btn-daftar-member'); if(btnDaftar) btnDaftar.classList.remove('hidden'); }
-
-        window.claimReward = function() { let currentPoin = parseInt(document.getElementById('poin-text').innerText.split('/')[0]) || 0; document.getElementById('display-poin-modal').innerText = currentPoin; document.getElementById('modal-claim-reward').classList.remove('hidden'); }
-        window.closeClaimModal = function() { document.getElementById('modal-claim-reward').classList.add('hidden'); }
-        window.applyReward = function() {
-            const radio = document.querySelector('input[name="reward_option"]:checked'); if (!radio) { alert("Pilih reward dulu!"); return; }
-            const choice = radio.value; const discount = (choice === 'diskon') ? 10000 : 0;
-            window.dispatchEvent(new CustomEvent('set-reward', { detail: { type: choice, discount: discount } })); window.closeClaimModal();
         }
 
         window.filterTreatments = function(categorySelect) {
@@ -507,7 +490,7 @@
         }
         function attachEventsToTreatmentRow(row) {
             const priceInput = row.querySelector('.harga-input'); if(!priceInput) return;
-            priceInput.addEventListener('input', function(e) { let raw = this.value.replace(/[^0-9]/g, ''); this.value = raw ? rupiahFormatter.format(raw) : ''; });
+            priceInput.addEventListener('input', function(e) { let raw = this.value.replace(/[^0-9]/g, ''); this.value = raw ? rupiahFormatter.format(raw) : ''; calculateGlobalTotal(); });
         }
         window.syncMainInputs = function(source, targetClass) { const group = source.closest('.item-group'); group.querySelectorAll('.' + targetClass).forEach(input => input.value = source.value); }
         window.addTreatmentRow = function(btn) {
@@ -521,14 +504,14 @@
             });
             newRow.querySelector('.btn-remove-treatment').classList.remove('hidden'); attachEventsToTreatmentRow(newRow); container.appendChild(newRow);
         }
-        window.removeTreatment = function(btn) { const row = btn.closest('.treatment-row'); if (row.parentElement.querySelectorAll('.treatment-row').length > 1) row.remove(); }
+        window.removeTreatment = function(btn) { const row = btn.closest('.treatment-row'); if (row.parentElement.querySelectorAll('.treatment-row').length > 1) row.remove(); calculateGlobalTotal(); }
         window.adjustJumlah = function(delta) {
             const input = document.getElementById('inputJumlah'); const container = document.getElementById('itemsContainer'); let val = parseInt(input.value) || 1;
             if (delta > 0) { val++; const newGroup = container.querySelector('.item-group').cloneNode(true); newGroup.querySelectorAll('input').forEach(i => { i.value = ''; if(i.name === 'tanggal_keluar[]') i.type = 'text'; }); container.appendChild(newGroup); } 
             else if (val > 1) { val--; container.removeChild(container.lastElementChild); } input.value = val;
+            calculateGlobalTotal();
         }
         window.openMemberModal = function() { document.getElementById('memberModal').classList.remove('hidden'); }
+        function formatRupiahInput(input) { let val = input.value.replace(/[^0-9]/g, ''); input.value = val ? rupiahFormatter.format(val) : ''; }
     </script>
-
-    <style> .animate-fade-in { animation: fadeIn 0.3s ease-in-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } } </style>
 </x-app-layout>
