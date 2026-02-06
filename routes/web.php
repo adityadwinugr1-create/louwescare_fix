@@ -3,7 +3,8 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\MemberController; 
-use App\Http\Controllers\OrderDetailController; // Tambahkan ini agar tidak error di baris paling bawah
+use App\Http\Controllers\OrderDetailController; 
+use App\Http\Controllers\KebutuhanController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -90,6 +91,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/order-details/{id}/status', [OrderDetailController::class, 'updateStatus'])->name('order-details.update-status');
     // Tambahkan di dalam group middleware ['auth', 'verified']
     Route::get('/orders/{id}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');
+
+    Route::get('/kebutuhan', [KebutuhanController::class, 'index'])->name('kebutuhan.index');
+    Route::post('/kebutuhan/store', [KebutuhanController::class, 'store'])->name('kebutuhan.store');
 });
 
 require __DIR__.'/auth.php';
