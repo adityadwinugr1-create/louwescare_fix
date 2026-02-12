@@ -195,21 +195,20 @@ class OrderController extends Controller
 
             // 1. CEK STATUS EXISTING (Untuk tabel orders -> Status Transaksi)
             $existingCustomer = Customer::where('no_hp', $request->no_hp)->first();
-            $statusOrder = 'New Customer';
+            $statusTransaksi = 'New Customer';
             
             if ($existingCustomer) {
-                $statusOrder = $existingCustomer->member ? 'Member' : 'Repeat Order';
+                $statusTransaksi = $existingCustomer->member ? 'Member' : 'Repeat Order';
             }
 
-            // 2. CREATE/UPDATE CUSTOMER (Data Profil)
-            // PERBAIKAN: Hanya update 'tipe' jika user mengisinya.
+            // 2. CREATE/UPDATE CUSTOMER (Data Profil di tabel Customers)
             $customerData = [
                 'nama' => $request->nama_customer,
                 'sumber_info' => $request->sumber_info
             ];
 
-            // Jika form tipe diisi, update database. Jika kosong, biarkan data lama.
-            if (!empty($request->tipe_customer)) {
+            // Update tipe profil HANYA jika diisi di form agar tidak menghapus data lama
+            if ($request->filled('tipe_customer')) {
                 $customerData['tipe'] = $request->tipe_customer;
             }
 
@@ -269,7 +268,7 @@ class OrderController extends Controller
                 'metode_pembayaran' => $metodePembayaran,
                 'status_pembayaran' => $statusPembayaran,
                 'status_order'      => 'Proses',
-                'tipe_customer'     => $statusOrder, // <--- New/Repeat/Member
+                'tipe_customer'     => $statusTransaksi, // Menggunakan label Member/Repeat/New
                 'catatan'           => $request->catatan[$validIndexes[0]] ?? '-', 
                 'kasir'             => $request->cs ?? 'Admin',
             ]);
@@ -348,6 +347,7 @@ class OrderController extends Controller
             'no_hp' => $request->no_hp,
             'customer' => null,
             'status' => 'New Customer',
+            'tipe_pilihan' => '', // Untuk mengisi form Tipe Customer
             'color' => 'text-blue-500 bg-blue-50 border-blue-200',
             'is_member' => false,
             'poin' => 0,
@@ -358,6 +358,8 @@ class OrderController extends Controller
         if ($customer) {
             $data['customer'] = $customer;
             $data['no_hp'] = $customer->no_hp;
+            $data['tipe_pilihan'] = $customer->tipe; // Mengambil tipe asli dari DB (misal: 'VVIP')
+
             if ($customer->member) {
                 $data['status'] = 'MEMBER';
                 $data['color'] = 'text-pink-600 bg-pink-100 border-pink-200';
@@ -378,18 +380,13 @@ class OrderController extends Controller
         
         if ($customer) {
             $poin = $customer->member ? $customer->member->poin : 0;
-            
-            // 1. Badge Status (Untuk Header: Member / Repeat Order)
             $badge = $customer->member ? 'Member' : 'Repeat Order';
-
-            // 2. Data Form (Murni dari Database)
-            $tipeForm = $customer->tipe; // JANGAN PAKE '??' agar tidak menimpa data NULL
 
             return response()->json([
                 'found' => true,
                 'nama' => $customer->nama,
                 'badge' => $badge,        
-                'tipe_form' => $tipeForm, // Murni data DB
+                'tipe_form' => $customer->tipe, // Data asli tipe dari tabel customers
                 'sumber_info' => $customer->sumber_info,
                 'poin' => $poin,
                 'target' => 8,

@@ -1,14 +1,11 @@
 <x-app-layout>
     {{-- 1. STYLE: CSS Khusus Nota & Tampilan --}}
     <style>
-        /* Font Nota mirip gambar referensi */
         .invoice-area { font-family: 'Helvetica', 'Arial', sans-serif; }
         .dashed-line { border-bottom: 1px dashed #000; }
         .thick-line { border-bottom: 2px solid #000; }
-
         .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        /* Hide scrollbar */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -19,9 +16,8 @@
         {{-- HEADER --}}
         <div class="flex flex-wrap items-center gap-3 md:gap-4 mb-6 md:mb-10">
             <h1 class="text-2xl md:text-4xl font-bold text-[#7FB3D5]">Input Order</h1>
-            {{-- Badge Status (Visual: New / Repeat / Member) --}}
             <span id="badge-status" class="text-sm md:text-xl font-bold px-3 py-1 rounded-full border {{ $color ?? 'text-blue-600 bg-blue-100 border-blue-200' }}">
-                {{ $status ?? 'New' }}
+                {{ $status ?? 'New Customer' }}
             </span>
         </div>
 
@@ -29,11 +25,8 @@
         <form id="orderForm" method="POST" onsubmit="event.preventDefault();">
             @csrf
             
-            {{-- Hidden Inputs Global --}}
             <input type="hidden" name="is_registered_member" id="is_registered_member" value="{{ $is_member ?? 0 }}">
             <input type="hidden" name="member_id" id="member_id" value="{{ $customer->member->id ?? '' }}">
-            
-            {{-- Input yang diatur via JS --}}
             <input type="hidden" name="metode_pembayaran" id="input_metode_pembayaran" value="Tunai">
             <input type="hidden" name="status_pembayaran" id="input_status_pembayaran" value="Lunas">
             <input type="hidden" name="claim_type" id="input_claim_type" value="">
@@ -150,30 +143,39 @@
                 </div>
             </div>
 
-            {{-- BOX INFO POIN & TIPE CUSTOMER --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div id="box-point" class="bg-[#E0E0E0] rounded-lg p-2 pl-24 h-full w-full flex flex-col justify-center items-center md:col-start-5 {{ ($is_member ?? false) ? '' : 'hidden' }}">
-                    <label class=" text-sm font-semibold text-gray-600 mb-1 "> Point </label>
-                    <div class="flex items-center gap-3">
-                        <span id="poin-text" class="text-gray-800 font-bold text-lg">{{ $poin ?? 0 }}/8</span>
-                        <button type="button" id="btn-claim" onclick="window.openClaimModal()" class="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded shadow hover:bg-blue-700 transition {{ ($poin ?? 0) >= 8 ? '' : 'hidden' }}">Claim</button>
-                        <span id="reward-badge" class="text-[10px] bg-green-500 text-white px-2 py-1 rounded-full animate-pulse hidden"></span>
-                    </div>
-                </div>
-                
-                <div id="box-tipe-customer" class="bg-[#E0E0E0] rounded-lg p-3 px-5 hover:shadow-md transition">
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">Tipe Customer</label>
-                    <input type="text" 
-                           name="tipe_customer" 
-                           id="input_tipe_customer" 
-                           value="{{ ($status ?? '') == 'New Customer' ? '' : ($status ?? '') }}" 
-                           class="w-full bg-transparent border-none p-0 focus:ring-0 text-gray-800 font-bold placeholder-gray-500"
-                           placeholder="Isi Tipe Customer (Cth: General)">
-                </div>
-            </div>
+{{-- BOX TIPE CUSTOMER (KIRI) & POIN (KANAN) --}}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 items-center">
+    {{-- Tipe Customer (Kiri) --}}
+    <div id="box-tipe-customer" class="bg-[#E0E0E0] rounded-lg p-3 px-5 hover:shadow-md transition">
+        <label class="block text-sm font-semibold text-gray-600 mb-1">Tipe Customer</label>
+        <input type="text" 
+               name="tipe_customer" 
+               id="input_tipe_customer" 
+               value="{{ $tipe_pilihan ?? '' }}" 
+               class="w-full bg-transparent border-none p-0 focus:ring-0 text-gray-800 font-bold placeholder-gray-500"
+               placeholder="Isi Tipe Customer (Cth: General)">
+    </div>
 
-            {{-- SUMBER INFO --}}
-            <div id="box-sumber-info" class="grid grid-cols-1 mb-12">
+    {{-- Box Point Mepet Kanan --}}
+    <div class="flex justify-end">
+        <div id="box-point" class="bg-[#E0E0E0] rounded-lg p-2 px-4 flex items-center gap-4 hover:shadow-md transition w-fit border border-gray-300 {{ ($is_member ?? false) ? '' : 'hidden' }}">
+            <div class="flex flex-col border-r border-gray-400 pr-4">
+                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Point</label>
+                <span id="poin-text" class="text-gray-800 font-black text-base leading-none">{{ $poin ?? 0 }}/8</span>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button type="button" id="btn-claim" onclick="window.openClaimModal()" 
+                        class="bg-blue-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-md shadow-sm hover:bg-blue-700 transition {{ ($poin ?? 0) >= 8 ? '' : 'hidden' }}">
+                    CLAIM
+                </button>
+                <span id="reward-badge" class="text-[9px] bg-green-500 text-white px-2 py-1 rounded-full animate-pulse hidden"></span>
+            </div>
+        </div>
+    </div>
+</div>
+            {{-- SUMBER INFO: OTOMATIS HIDDEN UNTUK MEMBER/REPEAT ORDER --}}
+            <div id="box-sumber-info" class="grid grid-cols-1 mb-12 {{ ($is_member ?? false) || ($status ?? '') == 'Repeat Order' ? 'hidden' : '' }}">
                 <div class="md:w-1/2 bg-[#E0E0E0] rounded-lg p-3 px-5 relative hover:shadow-md transition">
                     <label class="block text-sm font-semibold text-gray-600 mb-1">Tau Tempat ini Dari...</label>
                     <select name="sumber_info" class="w-full bg-transparent border-none p-0 pr-8 focus:ring-0 text-gray-800 font-medium cursor-pointer appearance-none">
@@ -314,7 +316,6 @@
         </form>
     </div>
 
-    {{-- MODAL MEMBER --}}
     @include('components.member-modal')
 
     {{-- MODAL CLAIM --}}
@@ -347,7 +348,7 @@
         });
 
         // ==========================================
-        // FUNCTION CEK CUSTOMER (SINKRON DENGAN TIPE_FORM)
+        // FUNCTION CEK CUSTOMER
         // ==========================================
         window.cekCustomer = function() {
             let hp = document.getElementById('no_hp').value;
@@ -359,32 +360,29 @@
                 data: { no_hp: hp },
                 success: function(response) {
                     if(response.found) {
-                        // 1. Isi Data Customer & Tipe Profil (General/Detail)
                         $('#nama_customer').val(response.nama);
-                        
-                        // PERBAIKAN: Gunakan tipe_form agar murni dari DB (bukan status Repeat Order)
                         $('#input_tipe_customer').val(response.tipe_form); 
                         
-                        // 2. Isi Sumber Info (Dropdown)
                         if(response.sumber_info) {
                             $('select[name="sumber_info"]').val(response.sumber_info);
                         }
 
-                        // 3. Hide box sumber info untuk pelanggan lama
+                        // Sembunyikan sumber info untuk pelanggan lama/member
                         $('#box-sumber-info').addClass('hidden');
 
-                        // 4. Update Badge Visual (New / Repeat / Member)
                         let badgeText = response.badge; 
                         let colorClass = badgeText === 'Member' ? 'text-pink-600 bg-pink-100 border-pink-200' : 'text-green-600 bg-green-100 border-green-200';
                         $('#badge-status').text(badgeText).attr('class', 'text-sm md:text-xl font-bold px-3 py-1 rounded-full border ' + colorClass);
 
-                        // 5. Logika Poin
-                        $('#poin-text').text(response.poin + '/8');
+                        $('#poin-text').text(response.poin + '/8 pts');
                         if(badgeText === 'Member') {
                             $('#box-point').removeClass('hidden');
                             $('#btn-daftar-member').addClass('hidden');
                             $('#member_id').val(response.member_id);
                             $('#is_registered_member').val(1);
+                            
+                            if(response.poin >= 8) $('#btn-claim').removeClass('hidden');
+                            else $('#btn-claim').addClass('hidden');
                         } else {
                             $('#box-point').addClass('hidden');
                             $('#btn-daftar-member').removeClass('hidden');
@@ -393,14 +391,13 @@
                         }
 
                     } else {
-                        // KASUS PELANGGAN BARU
+                        // Tampilkan sumber info untuk pelanggan baru
                         $('#box-sumber-info').removeClass('hidden');
                         $('select[name="sumber_info"]').prop('selectedIndex', 0);
                         $('#badge-status').text('New Customer').attr('class', 'text-sm md:text-xl font-bold px-3 py-1 rounded-full border text-blue-600 bg-blue-100 border-blue-200');
                         
-                        // Kosongkan form Tipe Customer
+                        $('#nama_customer').val('');
                         $('#input_tipe_customer').val(''); 
-
                         $('#box-point').addClass('hidden');
                         $('#btn-daftar-member').removeClass('hidden');
                         $('#member_id').val('');
