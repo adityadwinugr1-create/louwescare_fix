@@ -29,34 +29,32 @@ class NewPasswordController extends Controller
      * @throws \Illuminate\Validation\ValidationException
      */
     public function store(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'token' => ['required'],
-            'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+{
+    $request->validate([
+        'email' => ['required', 'email'],
+        'owner_pin' => ['required'],
+        'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
+    ]);
 
-        // Here we will attempt to reset the user's password. If it is successful we
-        // will update the password on an actual user model and persist it to the
-        // database. Otherwise we will parse the error and return the response.
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user) use ($request) {
-                $user->forceFill([
-                    'password' => Hash::make($request->password),
-                    'remember_token' => Str::random(60),
-                ])->save();
+    // 1. Cari user berdasarkan email
+    $user = \App\Models\User::where('email', $request->email)->first();
 
-                event(new PasswordReset($user));
-            }
-        );
-
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
-        return $status == Password::PASSWORD_RESET
-                    ? redirect()->route('login')->with('status', __($status))
-                    : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+    // 2. Validasi: Apakah user ada dan PIN cocok?
+    // Pastikan OWNER_RESET_PIN di .env sama persis dengan input
+    if (!$user || $request->owner_pin !== env('OWNER_RESET_PIN')) {
+        return back()
+            ->withInput($request->only('email'))
+            ->withErrors(['owner_pin' => 'Email atau PIN Owner salah!']);
     }
+
+    // 3. Update Password secara manual
+    $user->forceFill([
+        'password' => \Illuminate\Support\Facades\Hash::make($request->password),
+        'remember_token' => \Illuminate\Support\Str::random(60),
+    ])->save();
+
+    event(new \Illuminate\Auth\Events\PasswordReset($user));
+
+    return redirect()->route('login')->with('status', 'Password berhasil diperbarui!');
+}
 }
