@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="md:ml-64 flex flex-col justify-center items-center h-full bg-white px-4">
+    <div class="w-full flex flex-col justify-center items-center h-full px-4">
         
         <div class="w-full max-w-md flex flex-col items-center">
             {{-- Judul --}}

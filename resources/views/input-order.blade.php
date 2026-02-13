@@ -11,7 +11,7 @@
     </style>
 
     {{-- 2. WRAPPER UTAMA --}}
-    <div id="main-app" class="min-h-screen bg-white p-4 md:p-8">
+    <div id="main-app" class="w-full min-h-screen bg-white p-4 md:p-8">
 
         {{-- HEADER --}}
         <div class="flex flex-wrap md:flex-nowrap justify-between items-center gap-2 md:gap-4 mb-6 md:mb-10" style="padding-top: 5rem;">
@@ -104,18 +104,28 @@
                             
                             <div class="md:col-span-3">
                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">Kategori</label>
-                                <select class="category-select w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 text-xs font-medium text-gray-800 cursor-pointer focus:ring-blue-500" onchange="filterTreatments(this)">
-                                    <option value="">Pilih</option>
-                                    @foreach($treatments->pluck('kategori')->unique()->values() as $kategori)
-                                        @if(!empty($kategori))<option value="{{ $kategori }}">{{ $kategori }}</option>@endif
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <select class="category-select w-full max-w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 pr-8 text-xs font-medium text-gray-800 cursor-pointer focus:ring-blue-500 appearance-none truncate" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none !important;" onchange="filterTreatments(this)">
+                                        <option value="">Pilih</option>
+                                        @foreach($treatments->pluck('kategori')->unique()->values() as $kategori)
+                                            @if(!empty($kategori))<option value="{{ $kategori }}">{{ $kategori }}</option>@endif
+                                        @endforeach
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
+                                </div>
                             </div>
                             <div class="md:col-span-3">
                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">Layanan</label>
-                                <select name="kategori_treatment[]" class="treatment-select w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 text-xs font-medium text-gray-800 cursor-pointer focus:ring-blue-500">
-                                    <option value="">Pilih Kategori Dulu</option>
-                                </select>
+                                <div class="relative">
+                                    <select name="kategori_treatment[]" class="treatment-select w-full max-w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 pr-8 text-xs font-medium text-gray-800 cursor-pointer focus:ring-blue-500 appearance-none truncate" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none !important;">
+                                        <option value="">Pilih Kategori Dulu</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
+                                </div>
                             </div>
                             
                             <div class="md:col-span-3">
@@ -192,7 +202,7 @@
             
             {{-- SUMBER INFO: OTOMATIS HIDDEN UNTUK MEMBER/REPEAT ORDER --}}
             <div id="box-sumber-info" class="grid grid-cols-1 mb-12 {{ ($is_member ?? false) || ($status ?? '') == 'Repeat Order' ? 'hidden' : '' }}">
-                <div class="md:w-1/2 bg-[#E0E0E0] rounded-lg p-3 px-5 relative hover:shadow-md transition">
+                <div class="w-full bg-[#E0E0E0] rounded-lg p-3 px-5 relative hover:shadow-md transition">
                     <label class="block text-sm font-semibold text-gray-600 mb-1">Tau Tempat ini Dari...</label>
                     <select name="sumber_info" style="background-image: none;" class="w-full bg-transparent border-none p-0 pr-8 focus:ring-0 text-gray-800 font-medium cursor-pointer appearance-none">
                         <option value="Instagram">Instagram</option>
@@ -263,8 +273,8 @@
 
             {{-- 4. MODAL INVOICE POPUP --}}
             <div id="modal-invoice" class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900 bg-opacity-90" style="display: none;">
-                <div class="bg-white p-0 rounded-lg shadow-2xl overflow-hidden max-w-2xl w-full mx-4 relative">
-                    <div id="invoice-content" class="bg-white p-6 invoice-area text-xs leading-snug text-black">
+                <div class="bg-white p-0 rounded-lg shadow-2xl overflow-hidden max-w-2xl w-full mx-4 relative flex flex-col max-h-[90vh]">
+                    <div id="invoice-content" class="bg-white p-6 invoice-area text-xs leading-snug text-black overflow-y-auto">
                         <div class="text-center mb-2">
                             <div class="flex justify-center mb-2"><div class="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center font-bold text-xl">LC</div></div>
                             <h2 class="text-xl font-bold tracking-widest uppercase mb-1">LOUWES CARE</h2>
@@ -350,7 +360,7 @@
                         </div>
                         <div class="text-center mt-6 text-[10px] text-gray-500">-- Terima Kasih --</div>
                     </div>
-                    <div class="bg-gray-100 p-4 flex gap-2 no-print border-t">
+                    <div class="bg-gray-100 p-4 flex gap-2 no-print border-t shrink-0">
                         <button type="button" onclick="window.shareWhatsapp()" class="flex-1 bg-green-500 text-white py-2 rounded font-bold hover:bg-green-600">Share WA</button>
                         <button type="button" onclick="window.printInvoice()" class="flex-1 bg-gray-800 text-white py-2 rounded font-bold hover:bg-black">Cetak</button>
                         <button type="button" onclick="window.location.href = '{{ route('pesanan.index') }}'" class="flex-1 bg-red-100 text-red-600 py-2 rounded font-bold">Tutup</button>
@@ -498,7 +508,7 @@
         window.setPaymentStatus = function(val) { 
             $('#input_status_pembayaran').val(val); 
             $('#label-pay-amount').text(val === 'DP' ? 'Nominal DP' : 'Uang Diterima');
-            if(val === 'DP') $('#input_paid_amount').val(0);
+            if(val === 'DP') $('#input_paid_amount').val('');
             else $('#input_paid_amount').val(gFinalBill);
             calculateChange();
         }
