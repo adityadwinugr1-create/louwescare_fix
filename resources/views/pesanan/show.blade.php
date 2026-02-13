@@ -25,6 +25,12 @@
             claimType: '',      // Pilihan user saat ini
             tempReward: 'diskon', // Pilihan sementara modal
             isModalOpen: false,   // Kontrol modal
+            
+            // STATE PEMBAYARAN
+            isPaymentModalOpen: false,
+            paymentMethod: '{{ $order->metode_pembayaran ?? 'Tunai' }}',
+            newStatusPembayaran: '{{ $order->status_pembayaran }}',
+            payInput: '',
 
             // --- LOGIKA MODAL ---
             openModal() { this.isModalOpen = true; },
@@ -33,15 +39,37 @@
                 this.claimType = this.tempReward;
                 this.closeModal();
             },
+            
+            // --- LOGIKA MODAL PEMBAYARAN ---
+            openPaymentModal() {
+                this.isPaymentModalOpen = true;
+                this.paymentMethod = 'Tunai';
+                this.payInput = '';
+            },
+            closePaymentModal() {
+                this.isPaymentModalOpen = false;
+            },
+            confirmPayment() {
+                this.newStatusPembayaran = 'Lunas';
+                this.closePaymentModal();
+                // Beri jeda sedikit agar x-model update sebelum submit
+                setTimeout(() => window.updateOrder(true), 100);
+            },
+            get change() {
+                let pay = parseInt(this.payInput.replace(/\./g, '')) || 0;
+                return Math.max(0, pay - this.remainingBill);
+            },
 
             // --- LOGIKA HARGA ---
             totalPrice: 0, 
+            paidAmount: {{ $order->paid_amount ?? 0 }},
             get discount() { 
                 if (this.claimType === 'diskon') return {{ $nominalDiskon ?? 10000 }}; 
                 if (this.claimStatus === 'Diskon' && this.claimType === '') return {{ $nominalDiskon ?? 10000 }}; 
                 return 0; 
             },
             get finalBill() { return Math.max(0, this.totalPrice - this.discount); },
+            get remainingBill() { return Math.max(0, this.finalBill - this.paidAmount); },
             formatRupiah(number) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number); },
             calculateUI() {
                 let total = 0;
@@ -82,6 +110,8 @@
                 <input type="hidden" name="claim_type" x-model="claimType"> 
                 <input type="hidden" name="status" value="{{ $order->status_order }}">
                 <input type="hidden" name="catatan" value="{{ $order->catatan }}">
+                <input type="hidden" name="metode_pembayaran" x-model="paymentMethod">
+                <input type="hidden" name="status_pembayaran" x-model="newStatusPembayaran">
 
                 {{-- HEADER 1: Data Pelanggan & Status Info --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -191,11 +221,37 @@
                                         </tbody>
                                     </table>
                                 </div>
+
+                                {{-- SUMMARY TOTAL, DP, SISA --}}
+                                <div class="flex justify-end mt-4">
+                                    <div class="w-full sm:w-1/2 md:w-1/3 space-y-1 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm font-bold text-gray-600 uppercase">Total</span>
+                                            <span class="text-sm font-bold text-gray-900" x-text="formatRupiah(finalBill)"></span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm font-bold text-gray-600 uppercase">DP Dibayar</span>
+                                            <span class="text-sm font-bold text-blue-600" x-text="formatRupiah(paidAmount)"></span>
+                                        </div>
+                                        <div class="border-t border-gray-300 my-1"></div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-base font-black text-gray-800 uppercase">Sisa Tagihan</span>
+                                            <span class="text-base font-black text-red-600" x-text="formatRupiah(remainingBill)"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
                                     <button type="button" onclick="window.updateOrder(false)" class="inline-flex items-center px-6 py-3 bg-gray-600 border border-transparent rounded-lg font-bold text-sm text-white hover:bg-gray-700 transition">Simpan</button>
                                     <button type="button" onclick="window.updateOrder(true)" class="inline-flex items-center px-6 py-3 bg-blue-600 border border-transparent rounded-lg font-bold text-sm text-white hover:bg-blue-700 shadow-md transition">
                                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>Simpan & Cetak
                                     </button>
+                                    {{-- TOMBOL BAYAR LUNAS (Hanya muncul jika ada sisa tagihan) --}}
+                                    <template x-if="remainingBill > 0">
+                                        <button type="button" @click="openPaymentModal()" class="inline-flex items-center px-6 py-3 bg-green-600 border border-transparent rounded-lg font-bold text-sm text-white hover:bg-green-700 shadow-md transition">
+                                            Bayar Lunas
+                                        </button>
+                                    </template>
                                 </div>
                             </div>
                         </div>
@@ -227,6 +283,42 @@
                     <div class="flex justify-end gap-3">
                         <button type="button" @click="closeModal()" class="px-4 py-2 bg-gray-200 rounded font-bold text-gray-700">Batal</button>
                         <button type="button" @click="applyReward()" class="px-4 py-2 bg-blue-600 text-white rounded font-bold">Terapkan</button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- MODAL PEMBAYARAN PELUNASAN --}}
+            <div x-show="isPaymentModalOpen" 
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-60" 
+                 style="display: none;"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0">
+                 
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" @click.away="closePaymentModal()">
+                    <div class="bg-green-600 p-4 flex justify-between items-center"><h3 class="text-white font-bold text-lg">Pelunasan Tagihan</h3><button type="button" @click="closePaymentModal()" class="text-white font-bold text-2xl">&times;</button></div>
+                    <div class="p-6">
+                        <div class="mb-6 bg-green-50 p-4 rounded-xl text-center border border-green-100">
+                            <span class="text-xs text-green-600 font-bold uppercase">Sisa Tagihan</span>
+                            <div class="text-3xl font-black text-green-600 mt-1" x-text="formatRupiah(remainingBill)"></div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Metode Pembayaran</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <label class="cursor-pointer"><input type="radio" name="pay_method" value="Tunai" x-model="paymentMethod" class="peer sr-only"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-green-600 peer-checked:text-white hover:bg-gray-50 font-bold text-sm">Tunai</div></label>
+                                <label class="cursor-pointer"><input type="radio" name="pay_method" value="Transfer" x-model="paymentMethod" class="peer sr-only"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-green-600 peer-checked:text-white hover:bg-gray-50 font-bold text-sm">Transfer</div></label>
+                                <label class="cursor-pointer"><input type="radio" name="pay_method" value="QRIS" x-model="paymentMethod" class="peer sr-only"><div class="p-2 text-center border-2 rounded-lg peer-checked:bg-green-600 peer-checked:text-white hover:bg-gray-50 font-bold text-sm">QRIS</div></label>
+                            </div>
+                        </div>
+                        <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Uang Diterima (Opsional)</label>
+                            <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">Rp</span><input type="text" x-model="payInput" class="pl-10 block w-full rounded-lg border-gray-300 font-bold text-lg" placeholder="0" oninput="formatRupiahInput(this)"></div>
+                            <div class="mt-3 flex justify-between items-center pt-3 border-t border-gray-200"><span class="text-sm text-gray-500 font-bold">Kembalian:</span><span class="font-black text-green-600 text-xl" x-text="formatRupiah(change)"></span></div>
+                        </div>
+                        <div class="flex justify-end space-x-3"><button type="button" @click="closePaymentModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg font-bold">Batal</button><button type="button" @click="confirmPayment()" class="px-6 py-2 bg-green-600 text-white rounded-lg font-bold shadow-lg hover:bg-green-700">PROSES LUNAS</button></div>
                     </div>
                 </div>
             </div>
@@ -284,7 +376,22 @@
                                 <tr><td class="py-1 text-gray-600">Subtotal</td><td class="py-1 text-right" id="inv-subtotal"></td></tr>
                                 <tr class="dashed-line"><td class="py-1 text-gray-600">Diskon</td><td class="py-1 text-right" id="inv-discount"></td></tr>
                                 <tr><td class="py-2 font-bold text-sm">TOTAL</td><td class="py-2 font-bold text-sm text-right" id="inv-total"></td></tr>
-                                <tr><td class="py-1 font-bold text-green-600 uppercase" id="inv-status"></td><td class="py-1 text-right text-green-600 text-[10px]" id="inv-method"></td></tr>
+                                
+                                {{-- BARIS KHUSUS DP & SISA --}}
+                                <tr id="inv-dp-row" class="hidden">
+                                    <td class="py-1 text-gray-600 font-bold">DP Dibayar <span id="inv-dp-method" class="font-normal italic text-[9px]"></span></td>
+                                    <td class="py-1 text-right font-bold" id="inv-dp-amount"></td>
+                                </tr>
+                                <tr id="inv-sisa-row" class="dashed-line hidden">
+                                    <td class="py-1 text-gray-800 font-bold italic">SISA TAGIHAN</td>
+                                    <td class="py-1 text-right text-gray-800 font-bold italic" id="inv-sisa-amount"></td>
+                                </tr>
+
+                                {{-- BARIS STATUS DEFAULT --}}
+                                <tr id="inv-status-row">
+                                    <td class="py-1 font-bold text-green-600 uppercase" id="inv-status"></td>
+                                    <td class="py-1 text-right text-green-600 text-[10px]" id="inv-method"></td>
+                                </tr>
                             </table>
                         </div>
                     </div>
@@ -392,10 +499,27 @@
             $('#inv-subtotal').text(rupiahFormatter.format(originalTotal));
             $('#inv-discount').text('- ' + rupiahFormatter.format(discountAmount));
             $('#inv-total').text(rupiahFormatter.format(order.total_harga));
-            $('#inv-status').text(order.status_pembayaran ? order.status_pembayaran.toUpperCase() : '-');
             
-            let method = order.metode_pembayaran ? 'via ' + order.metode_pembayaran : '';
-            $('#inv-method').text(method);
+            // --- LOGIKA MENAMPILKAN DP DI NOTA ---
+            if (order.status_pembayaran === 'DP') {
+                $('#inv-dp-amount').text('Rp ' + rupiahFormatter.format(order.paid_amount));
+                $('#inv-sisa-amount').text('Rp ' + rupiahFormatter.format(order.total_harga - order.paid_amount));
+                $('#inv-dp-method').text('(via ' + (order.metode_pembayaran || '-') + ')');
+                
+                $('#inv-dp-row').removeClass('hidden');
+                $('#inv-sisa-row').removeClass('hidden');
+                
+                $('#inv-status-row').addClass('hidden');
+            } else {
+                $('#inv-dp-row').addClass('hidden');
+                $('#inv-sisa-row').addClass('hidden');
+                
+                $('#inv-status-row').removeClass('hidden');
+                $('#inv-status').text(order.status_pembayaran ? order.status_pembayaran.toUpperCase() : '-')
+                                .removeClass('text-gray-800').addClass('text-green-600');
+                $('#inv-method').text(order.metode_pembayaran ? 'via ' + order.metode_pembayaran : '')
+                                .removeClass('text-gray-800').addClass('text-green-600');
+            }
 
             let msgDiv = $('#inv-claim-msg');
             if (claimType === 'Diskon') { msgDiv.text('*** DISKON POIN DIGUNAKAN ***').removeClass('hidden'); }

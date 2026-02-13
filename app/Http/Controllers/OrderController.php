@@ -127,6 +127,12 @@ class OrderController extends Controller
                 'status_pembayaran' => $request->status_pembayaran ?? $order->status_pembayaran,
             ]);
 
+            // [LOGIKA BARU] Jika status diubah jadi Lunas, otomatis set paid_amount = total_harga
+            if ($request->status_pembayaran == 'Lunas') {
+                $order->paid_amount = $order->total_harga;
+                $order->save();
+            }
+
             if ($order->customer) $order->customer->update(['nama' => $request->nama_customer]);
 
             // --- C. UPDATE ITEM ---
@@ -428,42 +434,10 @@ class OrderController extends Controller
 
     public function invoice($id)
     {
-        $order = Order::with(['customer', 'details'])->findOrFail($id);
-        return view('orders.invoice', compact('order'));
-    }
-
-    public function updateDetail(Request $request, $id)
-    {
-        $detail = OrderDetail::findOrFail($id);
-        
-        if ($request->has('status')) {
-            $detail->status = $request->status;
-            $detail->save();
-        }
-
-        $order = $detail->order;
-        $totalDetails = $order->details()->count();
-        $unfinishedItems = $order->details()->whereNotIn('status', ['Selesai', 'Diambil'])->count();
-        $pickedUpItems = $order->details()->where('status', 'Diambil')->count();
-
-        if ($unfinishedItems > 0) {
-            $order->status_order = 'Proses';
-        } elseif ($pickedUpItems == $totalDetails) {
-            $order->status_order = 'Diambil';
-        } else {
-            $order->status_order = 'Selesai';
-        }
-        
-        $order->save();
-        return back()->with('success', 'Status berhasil diperbarui');
-    }
-
-    public function toggleWa($id, $type)
-    {
-        $order = Order::findOrFail($id);
-        if ($type == 1) $order->wa_sent_1 = !$order->wa_sent_1;
-        elseif ($type == 2) $order->wa_sent_2 = !$order->wa_sent_2;
-        $order->save();
-        return back();
+        $order = Order::with(['customer.member', 'details'])->findOrFail($id);
+        $treatments = Treatment::orderBy('nama_treatment', 'asc')->get();
+        $karyawans = Karyawan::orderBy('nama_karyawan', 'asc')->get();
+        $nominalDiskon = Setting::getDiskonMember();
+        return view('pesanan.show', compact('order', 'treatments', 'karyawans', 'nominalDiskon'));
     }
 }
