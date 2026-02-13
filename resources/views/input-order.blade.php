@@ -14,9 +14,11 @@
     <div id="main-app" class="min-h-screen bg-white p-4 md:p-8">
 
         {{-- HEADER --}}
-        <div class="flex flex-wrap items-center gap-3 md:gap-4 mb-6 md:mb-10">
-            <h1 class="text-2xl md:text-4xl font-bold text-[#7FB3D5]">Input Order</h1>
-            <span id="badge-status" class="text-sm md:text-xl font-bold px-3 py-1 rounded-full border {{ $color ?? 'text-blue-600 bg-blue-100 border-blue-200' }}">
+        <div class="flex flex-wrap md:flex-nowrap justify-between items-center gap-2 md:gap-4 mb-6 md:mb-10" style="padding-top: 5rem;">
+            <h1 class="text-2xl md:text-4xl font-bold text-[#7FB3D5] leading-none m-0">
+                Input Order
+            </h1>
+            <span id="badge-status" class="text-sm md:text-xl font-bold px-3 py-1 rounded-full border whitespace-nowrap m-0 {{ $color ?? 'text-blue-600 bg-blue-100 border-blue-200' }}">
                 {{ $status ?? 'New Customer' }}
             </span>
         </div>
@@ -67,7 +69,7 @@
                 <div class="bg-[#E0E0E0] rounded-lg p-3 px-5 flex flex-col justify-center hover:shadow-md transition relative">
                     <label class="block text-sm font-semibold text-gray-600 mb-1">Cs Masuk</label>
                     <select name="cs" style="background-image: none;" class="w-full bg-transparent border-none p-0 pr-8 focus:ring-0 text-gray-800 font-bold cursor-pointer appearance-none">
-                        <option value="" disabled selected>- Pilih Karyawan -</option>
+                        <option value="" disabled selected>Pilih Karyawan</option>
                         @foreach($karyawans as $k)
                             <option value="{{ $k->nama_karyawan }}">{{ $k->nama_karyawan }}</option>
                         @endforeach
@@ -85,12 +87,12 @@
                         <div>
                             <label class="block text-xs font-bold text-gray-600 mb-1">Item Name (Sepatu)</label>
                             <input type="text" class="main-item-input w-full bg-white/50 border border-gray-400 rounded-md p-2 text-sm font-bold text-gray-800 focus:ring-0 focus:border-blue-500 placeholder-gray-500" 
-                                   placeholder="Nama Barang (Cth: Nike Air Jordan)..." oninput="syncMainInputs(this, 'hidden-item')">
+                                   placeholder="Nama Barang" oninput="syncMainInputs(this, 'hidden-item')">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-600 mb-1">Catatan Umum</label>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Catatan</label>
                             <input type="text" class="main-catatan-input w-full bg-white/50 border border-gray-400 rounded-md p-2 text-sm font-medium text-gray-800 focus:ring-0 focus:border-blue-500 placeholder-gray-500" 
-                                   placeholder="Catatan kondisi sepatu..." oninput="syncMainInputs(this, 'hidden-catatan')">
+                                   placeholder="Catatan kondisi sepatu" oninput="syncMainInputs(this, 'hidden-catatan')">
                         </div>
                     </div>
 
@@ -103,7 +105,7 @@
                             <div class="md:col-span-3">
                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">Kategori</label>
                                 <select class="category-select w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 text-xs font-medium text-gray-800 cursor-pointer focus:ring-blue-500" onchange="filterTreatments(this)">
-                                    <option value="">- Pilih -</option>
+                                    <option value="">Pilih</option>
                                     @foreach($treatments->pluck('kategori')->unique()->values() as $kategori)
                                         @if(!empty($kategori))<option value="{{ $kategori }}">{{ $kategori }}</option>@endif
                                     @endforeach
@@ -112,7 +114,7 @@
                             <div class="md:col-span-3">
                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">Layanan</label>
                                 <select name="kategori_treatment[]" class="treatment-select w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 text-xs font-medium text-gray-800 cursor-pointer focus:ring-blue-500">
-                                    <option value="">- Pilih Kat. Dulu -</option>
+                                    <option value="">Pilih Kategori Dulu</option>
                                 </select>
                             </div>
                             
@@ -205,7 +207,7 @@
             </div>
 
             {{-- FOOTER BUTTONS --}}
-            <div class="flex flex-col md:flex-row justify-end gap-3 md:gap-4 mt-2">
+            <div class="flex flex-col md:flex-row justify-end gap-3 md:gap-4 mt-2 mb-12 md:mb-0">
                 <button type="button" id="btn-daftar-member" onclick="window.openMemberModal()" 
                         class="w-full md:w-auto bg-[#3b66ff] text-white px-6 md:px-10 py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition {{ ($is_member ?? false) ? 'hidden' : '' }}">
                     MEMBER
@@ -215,6 +217,8 @@
                     PROSES PEMBAYARAN
                 </button>
             </div>
+
+            <div style="height: 50px; width: 100%; display: block;"></div>
 
             {{-- MODAL PAYMENT --}}
             <div id="modal-payment" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-60 hidden">
@@ -244,7 +248,10 @@
                         <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
                             <label class="block text-sm font-bold text-gray-700 mb-1" id="label-pay-amount">Uang Diterima</label>
                             <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">Rp</span><input type="number" name="paid_amount" id="input_paid_amount" class="pl-10 block w-full rounded-lg border-gray-300 font-bold text-lg" placeholder="0" oninput="calculateChange()"></div>
-                            <div class="mt-3 flex justify-between items-center pt-3 border-t border-gray-200"><span class="text-sm text-gray-500 font-bold">Kembalian:</span><span id="display-change" class="font-black text-green-600 text-xl">Rp 0</span></div>
+                            <div class="mt-3 flex justify-between items-center pt-3 border-t border-gray-200">
+                                <span id="label-change-type" class="text-sm text-gray-500 font-bold">Kembalian:</span>
+                                <span id="display-change" class="font-black text-green-600 text-xl">Rp 0</span>
+                            </div>
                         </div>
                         <div class="flex justify-end space-x-3">
                             <button type="button" onclick="window.closePaymentModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg font-bold">Batal</button>
@@ -297,16 +304,33 @@
                                 <tbody id="inv-items-body" class="dashed-line"></tbody>
                             </table>
                         </div>
+                        
                         <div class="flex justify-end mb-6">
-                            <div class="w-1/2">
+                            <div class="w-full sm:w-1/2">
                                 <table class="w-full text-[11px]">
                                     <tr><td class="py-1 text-gray-600">Subtotal</td><td class="py-1 text-right" id="inv-subtotal"></td></tr>
                                     <tr class="dashed-line"><td class="py-1 text-gray-600">Diskon</td><td class="py-1 text-right" id="inv-discount"></td></tr>
                                     <tr><td class="py-2 font-bold text-sm">TOTAL</td><td class="py-2 font-bold text-sm text-right" id="inv-total"></td></tr>
-                                    <tr><td class="py-1 font-bold text-green-600 uppercase" id="inv-status"></td><td class="py-1 text-right text-green-600 text-[10px]" id="inv-method"></td></tr>
+                                    
+                                    {{-- BARIS KHUSUS DP & SISA --}}
+                                    <tr id="inv-dp-row" class="hidden">
+                                        <td class="py-1 text-gray-600 font-bold">DP Dibayar <span id="inv-dp-method" class="font-normal italic text-[9px]"></span></td>
+                                        <td class="py-1 text-right font-bold" id="inv-dp-amount"></td>
+                                    </tr>
+                                    <tr id="inv-sisa-row" class="dashed-line hidden">
+                                        <td class="py-1 text-gray-800 font-bold italic">SISA TAGIHAN</td>
+                                        <td class="py-1 text-right text-gray-800 font-bold italic" id="inv-sisa-amount"></td>
+                                    </tr>
+
+                                    {{-- BARIS STATUS DEFAULT --}}
+                                    <tr id="inv-status-row">
+                                        <td class="py-1 font-bold text-green-600 uppercase" id="inv-status"></td>
+                                        <td class="py-1 text-right text-green-600 text-[10px]" id="inv-method"></td>
+                                    </tr>
                                 </table>
                             </div>
                         </div>
+                        
                         <div class="dashed-line mb-3"></div>
                         <div class="flex justify-between items-start gap-4 text-[9px] text-gray-700">
                             <div class="w-1/2">
@@ -347,7 +371,6 @@
                 <div class="space-y-3 mb-6">
                     <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition">
                         <input type="radio" name="reward_option" value="diskon" class="mr-3 text-[#3b66ff]" checked>
-                        {{-- Tampilkan nominal dari database --}}
                         <div><p class="font-bold text-sm text-gray-800">Diskon Tunai Rp {{ number_format($nominal_diskon ?? 10000, 0, ',', '.') }}</p></div>
                     </label>
                     <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition"><input type="radio" name="reward_option" value="parfum" class="mr-3 text-[#3b66ff]"><div><p class="font-bold text-sm text-gray-800">Free Parfum (8 Poin)</p></div></label>
@@ -371,9 +394,6 @@
             if(document.getElementById('no_hp').value.length >= 4) { window.cekCustomer(); }
         });
 
-        // ==========================================
-        // FUNCTION CEK CUSTOMER
-        // ==========================================
         window.cekCustomer = function() {
             let hp = document.getElementById('no_hp').value;
             if(hp.length < 4) return;
@@ -391,12 +411,11 @@
                             $('select[name="sumber_info"]').val(response.sumber_info);
                         }
 
-                        // Sembunyikan sumber info untuk pelanggan lama/member
                         $('#box-sumber-info').addClass('hidden');
 
                         let badgeText = response.badge; 
                         let colorClass = badgeText === 'Member' ? 'text-pink-600 bg-pink-100 border-pink-200' : 'text-green-600 bg-green-100 border-green-200';
-                        $('#badge-status').text(badgeText).attr('class', 'text-sm md:text-xl font-bold px-3 py-1 rounded-full border ' + colorClass);
+                        $('#badge-status').text(badgeText).attr('class', 'text-sm md:text-xl font-bold px-3 py-1 rounded-full border whitespace-nowrap m-0 ' + colorClass);
 
                         $('#poin-text').text(response.poin + '/8 pts');
                         if(badgeText === 'Member') {
@@ -415,10 +434,9 @@
                         }
 
                     } else {
-                        // Tampilkan sumber info untuk pelanggan baru
                         $('#box-sumber-info').removeClass('hidden');
                         $('select[name="sumber_info"]').prop('selectedIndex', 0);
-                        $('#badge-status').text('New Customer').attr('class', 'text-sm md:text-xl font-bold px-3 py-1 rounded-full border text-blue-600 bg-blue-100 border-blue-200');
+                        $('#badge-status').text('New Customer').attr('class', 'text-sm md:text-xl font-bold px-3 py-1 rounded-full border whitespace-nowrap m-0 text-blue-600 bg-blue-100 border-blue-200');
                         
                         $('#nama_customer').val('');
                         $('#input_tipe_customer').val(''); 
@@ -452,8 +470,19 @@
 
         function calculateChange() {
             let paid = parseInt($('#input_paid_amount').val()) || 0;
-            let change = Math.max(0, paid - gFinalBill);
-            $('#display-change').text('Rp ' + rupiahFormatter.format(change));
+            let status = $('#input_status_pembayaran').val();
+            
+            if (status === 'DP') {
+                let sisa = Math.max(0, gFinalBill - paid);
+                $('#label-change-type').text('Sisa Tagihan:');
+                $('#display-change').text('Rp ' + rupiahFormatter.format(sisa))
+                                    .removeClass('text-green-600').addClass('text-red-500');
+            } else {
+                let change = Math.max(0, paid - gFinalBill);
+                $('#label-change-type').text('Kembalian:');
+                $('#display-change').text('Rp ' + rupiahFormatter.format(change))
+                                    .removeClass('text-red-500').addClass('text-green-600');
+            }
         }
 
         window.openPaymentModal = function() {
@@ -484,7 +513,6 @@
             const radio = document.querySelector('input[name="reward_option"]:checked'); 
             if (!radio) { alert("Pilih reward dulu!"); return; }
             const choice = radio.value; 
-            // Ambil nilai diskon dari variabel PHP yang dikirim controller
             const nominalDiskon = {{ $nominal_diskon ?? 10000 }};
             const discount = (choice === 'diskon') ? nominalDiskon : 0;
             $('#input_claim_type').val(choice);
@@ -543,8 +571,27 @@
             $('#inv-subtotal').text(rupiahFormatter.format(data.original_total));
             $('#inv-discount').text('- ' + rupiahFormatter.format(data.discount_amount));
             $('#inv-total').text(rupiahFormatter.format(order.total_harga));
-            $('#inv-status').text(order.status_pembayaran ? order.status_pembayaran.toUpperCase() : '-');
-            $('#inv-method').text(order.metode_pembayaran ? 'via ' + order.metode_pembayaran : '');
+
+            // --- LOGIKA MENAMPILKAN DP DI NOTA ---
+            if (order.status_pembayaran === 'DP') {
+                $('#inv-dp-amount').text('Rp ' + rupiahFormatter.format(order.paid_amount));
+                $('#inv-sisa-amount').text('Rp ' + rupiahFormatter.format(order.total_harga - order.paid_amount));
+                $('#inv-dp-method').text('(via ' + (order.metode_pembayaran || '-') + ')');
+                
+                $('#inv-dp-row').removeClass('hidden');
+                $('#inv-sisa-row').removeClass('hidden');
+                
+                $('#inv-status-row').addClass('hidden');
+            } else {
+                $('#inv-dp-row').addClass('hidden');
+                $('#inv-sisa-row').addClass('hidden');
+                
+                $('#inv-status-row').removeClass('hidden');
+                $('#inv-status').text(order.status_pembayaran ? order.status_pembayaran.toUpperCase() : '-')
+                                .removeClass('text-gray-800').addClass('text-green-600');
+                $('#inv-method').text(order.metode_pembayaran ? 'via ' + order.metode_pembayaran : '')
+                                .removeClass('text-gray-800').addClass('text-green-600');
+            }
 
             let msgDiv = $('#inv-claim-msg');
             if (data.claim_type === 'Diskon') { msgDiv.text('*** DISKON POIN DIGUNAKAN ***').removeClass('hidden'); }
@@ -566,7 +613,7 @@
         }
 
         window.filterTreatments = function(categorySelect) {
-            const row = categorySelect.closest('.treatment-row'); const treatmentSelect = row.querySelector('.treatment-select'); treatmentSelect.innerHTML = '<option value="">- Pilih -</option>';
+            const row = categorySelect.closest('.treatment-row'); const treatmentSelect = row.querySelector('.treatment-select'); treatmentSelect.innerHTML = '<option value="">Pilih</option>';
             const selectedCategory = categorySelect.value; if (!selectedCategory) return;
             const filtered = rawTreatments.filter(t => t.kategori && t.kategori.trim().toLowerCase() === selectedCategory.trim().toLowerCase());
             filtered.forEach(t => { const option = document.createElement('option'); option.value = t.nama_treatment; option.textContent = t.nama_treatment; treatmentSelect.appendChild(option); });
@@ -584,7 +631,7 @@
             const mainItemValue = group.querySelector('.main-item-input').value;
             const mainCatatanValue = group.querySelector('.main-catatan-input').value;
             const newRow = container.querySelector('.treatment-row').cloneNode(true);
-            newRow.querySelectorAll('select').forEach(s => s.selectedIndex = 0); newRow.querySelector('.treatment-select').innerHTML = '<option value="">- Pilih Kat. Dulu -</option>';
+            newRow.querySelectorAll('select').forEach(s => s.selectedIndex = 0); newRow.querySelector('.treatment-select').innerHTML = '<option value="">Pilih Kat. Dulu</option>';
             
             newRow.querySelectorAll('input').forEach(i => {
                 if (i.classList.contains('hidden-item')) i.value = mainItemValue; 
