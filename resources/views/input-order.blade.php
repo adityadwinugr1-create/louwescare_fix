@@ -678,7 +678,73 @@
             calculateGlobalTotal();
         }
 
-        window.openMemberModal = function() { document.getElementById('memberModal').classList.remove('hidden'); }
+        window.openMemberModal = function() { 
+            let curName = $('#nama_customer').val();
+            let curHp = $('#no_hp').val();
+            
+            calculateGlobalTotal();
+            let currentTotal = gTotal || 0;
+            let currentPoin = Math.floor(currentTotal / 50000);
+
+            let $modal = $('#memberModal');
+            
+            $modal.find('input[name="nama"]').val(curName);
+            $modal.find('input[name="no_hp"]').val(curHp);
+            
+            // Isi Total Belanja (Visible & Hidden)
+            $('#modalTotalDisplay').val(rupiahFormatter.format(currentTotal));
+            $('#modalTotalValue').val(currentTotal);
+
+            // Isi Poin
+            $modal.find('input[name="initial_poin"]').val(currentPoin);
+
+            document.getElementById('memberModal').classList.remove('hidden'); 
+        }
+
+        window.submitMemberAjax = function(event) {
+            event.preventDefault();
+            
+            let form = document.getElementById('formMemberAjax');
+            let formData = new FormData(form);
+
+            $.ajax({
+                url: "{{ route('members.store') }}",
+                type: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                success: function(response) {
+                    if(response.status === 'success') {
+                        // 1. Update Tampilan Badge & UI
+                        $('#badge-status').text('MEMBER')
+                            .removeClass('text-blue-600 bg-blue-100 border-blue-200 text-green-600 bg-green-100 border-green-200')
+                            .addClass('text-pink-600 bg-pink-100 border-pink-200');
+
+                        $('#box-point').removeClass('hidden');
+                        $('#btn-daftar-member').addClass('hidden');
+                        $('#box-sumber-info').addClass('hidden');
+
+                        // 2. Update Data Poin & Hidden ID
+                        $('#poin-text').text((response.poin || 0) + '/8 pts');
+                        $('#is_registered_member').val(1);
+                        if(response.member && response.member.id) {
+                            $('#member_id').val(response.member.id);
+                        }
+
+                        // 3. Tutup Modal
+                        closeMemberModal();
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr) {
+                    alert(xhr.responseJSON ? xhr.responseJSON.message : 'Gagal menyimpan member.');
+                }
+            });
+        }
+
         function formatRupiahInput(input) { let val = input.value.replace(/[^0-9]/g, ''); input.value = val ? rupiahFormatter.format(val) : ''; }
     </script>
 </x-app-layout>
