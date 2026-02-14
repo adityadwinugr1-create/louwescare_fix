@@ -32,7 +32,7 @@ class MemberController extends Controller
             // 2. Cari atau Buat Customer
             $customer = Customer::firstOrCreate(
                 ['no_hp' => $request->no_hp],
-                ['nama' => $request->nama, 'alamat' => $request->alamat]
+                ['nama' => $request->nama]
             );
 
             // 3. Cek apakah sudah member
@@ -44,11 +44,11 @@ class MemberController extends Controller
             }
 
             // 4. Simpan Member
-            Member::create([
+            $member = Member::create([
                 'customer_id' => $customer->id,
                 'level' => 'Silver',
-                'poin' => $request->initial_poin ?? 0,
-                'total_transaksi' => $request->initial_total ?? 0
+                'poin' => 0,
+                'total_transaksi' => 0
             ]);
 
             DB::commit();
@@ -57,7 +57,8 @@ class MemberController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Member berhasil didaftarkan!',
-                'poin' => $request->initial_poin
+                'poin' => $request->initial_poin,
+                'member' => $member
             ]);
 
         } catch (\Exception $e) {
