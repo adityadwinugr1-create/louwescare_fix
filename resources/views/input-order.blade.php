@@ -361,7 +361,6 @@
                         <div class="text-center mt-6 text-[10px] text-gray-500">-- Terima Kasih --</div>
                     </div>
                     <div class="bg-gray-100 p-4 flex gap-2 no-print border-t shrink-0">
-                        <button type="button" onclick="window.shareWhatsapp()" class="flex-1 bg-green-500 text-white py-2 rounded font-bold hover:bg-green-600">Share WA</button>
                         <button type="button" onclick="window.printInvoice()" class="flex-1 bg-gray-800 text-white py-2 rounded font-bold hover:bg-black">Cetak</button>
                         <button type="button" onclick="window.location.href = '{{ route('pesanan.index') }}'" class="flex-1 bg-red-100 text-red-600 py-2 rounded font-bold">Tutup</button>
                     </div>
