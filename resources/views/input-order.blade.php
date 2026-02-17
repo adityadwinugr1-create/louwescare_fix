@@ -83,7 +83,7 @@
             {{-- ITEMS CONTAINER --}}
             <div id="itemsContainer" class="space-y-6 mb-6">
                 <div class="item-group bg-[#E0E0E0] p-4 rounded-xl shadow-sm relative group animate-fade-in hover:shadow-md transition">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pb-4 border-b border-gray-400">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pb-4 border-b border-gray-400">
                         <div>
                             <label class="block text-xs font-bold text-gray-600 mb-1">Item Name (Sepatu)</label>
                             <input type="text" class="main-item-input w-full bg-white/50 border border-gray-400 rounded-md p-2 text-sm font-bold text-gray-800 focus:ring-0 focus:border-blue-500 placeholder-gray-500" 
@@ -94,6 +94,19 @@
                             <input type="text" class="main-catatan-input w-full bg-white/50 border border-gray-400 rounded-md p-2 text-sm font-medium text-gray-800 focus:ring-0 focus:border-blue-500 placeholder-gray-500" 
                                    placeholder="Catatan kondisi sepatu" oninput="syncMainInputs(this, 'hidden-catatan')">
                         </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Estimasi Selesai</label>
+                            <div class="relative w-full">
+                                <input type="date" class="main-estimasi-input w-full bg-white/50 border border-gray-400 rounded-md p-2 text-sm font-bold text-gray-800 focus:ring-0 focus:border-blue-500 cursor-pointer"
+                                       style="color: transparent;"
+                                       onfocus="this.style.color='inherit'; this.nextElementSibling.classList.add('hidden');"
+                                       onblur="if(!this.value){ this.style.color='transparent'; this.nextElementSibling.classList.remove('hidden'); }"
+                                       onchange="this.style.color='inherit'; this.nextElementSibling.classList.add('hidden'); syncMainInputs(this, 'hidden-estimasi')">
+                                <span class="absolute inset-y-0 left-2 flex items-center text-gray-500 text-xs pointer-events-none transition-opacity">
+                                    Pilih Tanggal
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="treatments-container space-y-3">
@@ -101,8 +114,9 @@
                         <div class="treatment-row grid grid-cols-1 md:grid-cols-12 gap-3 bg-white p-3 rounded-lg border border-gray-300 relative shadow-sm">
                             <input type="hidden" name="item[]" class="hidden-item">
                             <input type="hidden" name="catatan[]" class="hidden-catatan">
+                            <input type="hidden" name="tanggal_keluar[]" class="hidden-estimasi">
                             
-                            <div class="md:col-span-3">
+                            <div class="md:col-span-4">
                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">Kategori</label>
                                 <div class="relative">
                                     <select class="category-select w-full max-w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 pr-8 text-xs font-medium text-gray-800 cursor-pointer focus:ring-blue-500 appearance-none truncate" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none !important;" onchange="filterTreatments(this)">
@@ -110,41 +124,27 @@
                                         @foreach($treatments->pluck('kategori')->unique()->values() as $kategori)
                                             @if(!empty($kategori))<option value="{{ $kategori }}">{{ $kategori }}</option>@endif
                                         @endforeach
+                                        <option value="Custom" class="font-bold text-blue-600">+ Custom (Manual)</option>
                                     </select>
                                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
                                         <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                                     </div>
                                 </div>
                             </div>
-                            <div class="md:col-span-3">
+                            <div class="md:col-span-4">
                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">Layanan</label>
                                 <div class="relative">
                                     <select name="kategori_treatment[]" class="treatment-select w-full max-w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 pr-8 text-xs font-medium text-gray-800 cursor-pointer focus:ring-blue-500 appearance-none truncate" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none !important;">
                                         <option value="">Pilih Kategori Dulu</option>
                                     </select>
-                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <input type="text" name="kategori_treatment[]" class="treatment-input hidden w-full max-w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 text-xs font-medium text-gray-800 focus:ring-blue-500 placeholder-gray-400" placeholder="Ketik Manual..." disabled>
+                                    <div class="chevron-icon pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
                                         <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="md:col-span-3">
-                                <label class="block text-[10px] font-bold text-gray-500 mb-1">Estimasi</label>
-                                <div class="relative w-full">
-                                    <input type="date" name="tanggal_keluar[]"
-                                           class="w-full bg-gray-50 border border-gray-300 rounded-md p-1.5 text-xs font-medium text-gray-800 focus:ring-blue-500 cursor-pointer"
-                                           style="color: transparent;"
-                                           onfocus="this.style.color='inherit'; this.nextElementSibling.classList.add('hidden');"
-                                           onblur="if(!this.value){ this.style.color='transparent'; this.nextElementSibling.classList.remove('hidden'); }"
-                                           onchange="this.style.color='inherit'; this.nextElementSibling.classList.add('hidden');">
-                                           
-                                    <span class="absolute inset-y-0 left-2 flex items-center text-gray-400 text-xs pointer-events-none transition-opacity">
-                                        Pilih Tanggal
-                                    </span>
-                                </div>
-                            </div>
-                            
-                            <div class="md:col-span-3">
+                            <div class="md:col-span-4">
                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">Harga</label>
                                 <div class="relative">
                                     <span class="absolute left-2 top-1.5 text-xs font-bold text-gray-500">Rp</span>
@@ -257,7 +257,7 @@
                         </div>
                         <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
                             <label class="block text-sm font-bold text-gray-700 mb-1" id="label-pay-amount">Uang Diterima</label>
-                            <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">Rp</span><input type="number" name="paid_amount" id="input_paid_amount" class="pl-10 block w-full rounded-lg border-gray-300 font-bold text-lg" placeholder="0" oninput="calculateChange()"></div>
+                            <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">Rp</span><input type="text" name="paid_amount" id="input_paid_amount" class="pl-10 block w-full rounded-lg border-gray-300 font-bold text-lg" placeholder="0" oninput="formatRupiahInput(this); calculateChange()"></div>
                             <div class="mt-3 flex justify-between items-center pt-3 border-t border-gray-200">
                                 <span id="label-change-type" class="text-sm text-gray-500 font-bold">Kembalian:</span>
                                 <span id="display-change" class="font-black text-green-600 text-xl">Rp 0</span>
@@ -472,13 +472,14 @@
             if(gDiscount > 0) $('#display-discount-msg').removeClass('hidden'); else $('#display-discount-msg').addClass('hidden');
             
             if($('#input_status_pembayaran').val() === 'Lunas') {
-                $('#input_paid_amount').val(gFinalBill);
+                $('#input_paid_amount').val(rupiahFormatter.format(gFinalBill));
                 calculateChange();
             }
         }
 
         function calculateChange() {
-            let paid = parseInt($('#input_paid_amount').val()) || 0;
+            let rawPaid = $('#input_paid_amount').val().replace(/\./g, '');
+            let paid = parseInt(rawPaid) || 0;
             let status = $('#input_status_pembayaran').val();
             
             if (status === 'DP') {
@@ -495,6 +496,42 @@
         }
 
         window.openPaymentModal = function() {
+            // --- VALIDASI INPUT SEBELUM LANJUT ---
+            let errors = [];
+
+            // 1. Validasi Data Customer & CS
+            if(!$('#nama_customer').val().trim()) errors.push("Nama Customer wajib diisi.");
+            if(!$('#no_hp').val().trim()) errors.push("Nomor HP wajib diisi.");
+            if(!$('select[name="cs"]').val()) errors.push("Silakan pilih CS Masuk.");
+
+            // 2. Validasi Item & Treatment
+            document.querySelectorAll('.item-group').forEach((group, index) => {
+                let itemName = group.querySelector('.main-item-input').value.trim();
+                let estimasi = group.querySelector('.main-estimasi-input').value;
+                
+                if(!itemName) errors.push(`Nama Item (Sepatu) ke-${index+1} belum diisi.`);
+                if(!estimasi) errors.push(`Estimasi Selesai untuk item '${itemName || 'ke-'+(index+1)}' belum dipilih.`);
+
+                group.querySelectorAll('.treatment-row').forEach((row) => {
+                    let category = row.querySelector('.category-select').value;
+                    
+                    // Perbaikan Validasi: Cek input manual jika kategori Custom
+                    let serviceSelect = row.querySelector('.treatment-select');
+                    let serviceInput = row.querySelector('.treatment-input');
+                    let service = (category === 'Custom') ? serviceInput.value.trim() : serviceSelect.value;
+
+                    let price = row.querySelector('.harga-input').value.trim();
+
+                    if(!category || !service) errors.push(`Layanan/Treatment untuk item '${itemName || 'ke-'+(index+1)}' belum lengkap.`);
+                    if(!price) errors.push(`Harga untuk item '${itemName || 'ke-'+(index+1)}' belum diisi.`);
+                });
+            });
+
+            if(errors.length > 0) {
+                alert("Mohon lengkapi data berikut sebelum lanjut:\n\n- " + errors.join("\n- "));
+                return;
+            }
+
             calculateGlobalTotal();
             document.getElementById('modal-payment').style.display = 'flex';
             document.getElementById('modal-payment').classList.remove('hidden');
@@ -508,7 +545,7 @@
             $('#input_status_pembayaran').val(val); 
             $('#label-pay-amount').text(val === 'DP' ? 'Nominal DP' : 'Uang Diterima');
             if(val === 'DP') $('#input_paid_amount').val('');
-            else $('#input_paid_amount').val(gFinalBill);
+            else $('#input_paid_amount').val(rupiahFormatter.format(gFinalBill));
             calculateChange();
         }
 
@@ -560,18 +597,29 @@
             $('#inv-date').text(dateStr);
 
             let rows = '';
-            order.details.forEach(item => {
+            order.details.forEach((item, index) => {
                 let estStr = '-';
                 if(item.estimasi_keluar) {
                     let estDate = new Date(item.estimasi_keluar);
                     estStr = estDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
                 }
+
+                let showInfo = true;
+                if (index > 0) {
+                    let prev = order.details[index - 1];
+                    if (prev.nama_barang === item.nama_barang && 
+                        (prev.catatan || '') === (item.catatan || '') && 
+                        prev.estimasi_keluar === item.estimasi_keluar) {
+                        showInfo = false;
+                    }
+                }
+
                 rows += `
                     <tr class="align-top">
-                        <td class="py-2 font-bold pr-2">${item.nama_barang}</td>
-                        <td class="py-2 pr-2 text-gray-600 italic">${item.catatan || '-'}</td>
+                        <td class="py-2 font-bold pr-2">${showInfo ? item.nama_barang : ''}</td>
+                        <td class="py-2 pr-2 text-gray-600 italic">${showInfo ? (item.catatan || '-') : ''}</td>
                         <td class="py-2 pr-2">${item.layanan}</td>
-                        <td class="py-2 text-center whitespace-nowrap">${estStr}</td>
+                        <td class="py-2 text-center whitespace-nowrap">${showInfo ? estStr : ''}</td>
                         <td class="py-2 text-right font-bold">${rupiahFormatter.format(item.harga)}</td>
                     </tr>
                 `;
@@ -609,10 +657,37 @@
         }
 
         window.printInvoice = function() {
+            var invoiceNo = $('#inv-no').text() || 'Invoice';
             var content = document.getElementById('invoice-content').innerHTML;
-            var mywindow = window.open('', 'PRINT', 'height=600,width=400');
-            mywindow.document.write('<html><head><title>Invoice</title><style>body{font-family:"Helvetica","Arial",sans-serif;font-size:12px;margin:0;padding:10px;color:#000}.text-center{text-align:center}.text-right{text-align:right}.font-bold{font-weight:700}.uppercase{text-transform:uppercase}.italic{font-style:italic}.hidden{display:none}table{width:100%;border-collapse:collapse;margin-bottom:5px}td,th{vertical-align:top;padding:2px 0}.w-4\\/12{width:35%}.w-3\\/12{width:25%}.w-2\\/12{width:15%}.text-\\[10px\\]{font-size:10px}.text-\\[9px\\]{font-size:9px}.dashed-line{border-bottom:1px dashed #000}.thick-line{border-bottom:2px solid #000}.border-b{border-bottom:1px solid #000}ul{padding-left:15px;margin:5px 0}.flex{display:flex;justify-content:space-between;align-items:flex-end}</style></head><body>' + content + '</body></html>');
-            mywindow.document.close(); mywindow.focus(); setTimeout(function() { mywindow.print(); mywindow.close(); }, 500);
+            
+            // Simpan judul asli dan ubah judul dokumen agar nama file PDF sesuai nomor invoice
+            // Browser modern (Chrome/Edge) mengambil nama file dari title Tab/Window utama
+            document.title = invoiceNo;
+            
+            // Gunakan iframe agar tidak membuka tab baru dan lebih stabil di HP/Tablet
+            var iframeId = 'invoice-print-frame';
+            var iframe = document.getElementById(iframeId);
+            if (iframe) { document.body.removeChild(iframe); }
+            
+            iframe = document.createElement('iframe');
+            iframe.id = iframeId;
+            iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0;';
+            document.body.appendChild(iframe);
+            
+            var doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write('<html><head><title>' + invoiceNo + '</title>');
+            doc.write('<style>body{font-family:"Helvetica","Arial",sans-serif;font-size:12px;margin:0;padding:10px;color:#000}.text-center{text-align:center}.text-right{text-align:right}.font-bold{font-weight:700}.uppercase{text-transform:uppercase}.italic{font-style:italic}.hidden{display:none}table{width:100%;border-collapse:collapse;margin-bottom:5px}td,th{vertical-align:top;padding:2px 0}.w-4\\/12{width:35%}.w-3\\/12{width:25%}.w-2\\/12{width:15%}.text-\\[10px\\]{font-size:10px}.text-\\[9px\\]{font-size:9px}.dashed-line{border-bottom:1px dashed #000}.thick-line{border-bottom:2px solid #000}.border-b{border-bottom:1px solid #000}ul{padding-left:15px;margin:5px 0}.flex{display:flex;justify-content:space-between;align-items:flex-end}</style>');
+            doc.write('</head><body>' + content + '</body></html>');
+            doc.close();
+            
+            // Paksa set title dokumen iframe juga (untuk browser yang baca title iframe)
+            doc.title = invoiceNo;
+
+            setTimeout(function() { 
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }, 500);
         }
 
         window.shareWhatsapp = function() {
@@ -622,10 +697,27 @@
         }
 
         window.filterTreatments = function(categorySelect) {
-            const row = categorySelect.closest('.treatment-row'); const treatmentSelect = row.querySelector('.treatment-select'); treatmentSelect.innerHTML = '<option value="">Pilih</option>';
-            const selectedCategory = categorySelect.value; if (!selectedCategory) return;
-            const filtered = rawTreatments.filter(t => t.kategori && t.kategori.trim().toLowerCase() === selectedCategory.trim().toLowerCase());
-            filtered.forEach(t => { const option = document.createElement('option'); option.value = t.nama_treatment; option.textContent = t.nama_treatment; treatmentSelect.appendChild(option); });
+            const row = categorySelect.closest('.treatment-row'); 
+            const treatmentSelect = row.querySelector('.treatment-select'); 
+            const treatmentInput = row.querySelector('.treatment-input');
+            const chevron = row.querySelector('.chevron-icon');
+            
+            treatmentSelect.innerHTML = '<option value="">Pilih</option>';
+            const selectedCategory = categorySelect.value; 
+
+            if (selectedCategory === 'Custom') {
+                treatmentSelect.classList.add('hidden'); treatmentSelect.disabled = true;
+                treatmentInput.classList.remove('hidden'); treatmentInput.disabled = false; treatmentInput.focus();
+                if(chevron) chevron.classList.add('hidden');
+            } else {
+                treatmentSelect.classList.remove('hidden'); treatmentSelect.disabled = false;
+                treatmentInput.classList.add('hidden'); treatmentInput.disabled = true; treatmentInput.value = '';
+                if(chevron) chevron.classList.remove('hidden');
+                
+                if (!selectedCategory) return;
+                const filtered = rawTreatments.filter(t => t.kategori && t.kategori.trim().toLowerCase() === selectedCategory.trim().toLowerCase());
+                filtered.forEach(t => { const option = document.createElement('option'); option.value = t.nama_treatment; option.textContent = t.nama_treatment; treatmentSelect.appendChild(option); });
+            }
         }
 
         function attachEventsToTreatmentRow(row) {
@@ -639,18 +731,24 @@
             const group = btn.closest('.item-group'); const container = group.querySelector('.treatments-container');
             const mainItemValue = group.querySelector('.main-item-input').value;
             const mainCatatanValue = group.querySelector('.main-catatan-input').value;
+            const mainEstimasiValue = group.querySelector('.main-estimasi-input').value;
             const newRow = container.querySelector('.treatment-row').cloneNode(true);
             newRow.querySelectorAll('select').forEach(s => s.selectedIndex = 0); newRow.querySelector('.treatment-select').innerHTML = '<option value="">Pilih Kat. Dulu</option>';
+            
+            // Reset Custom Input State (jika baris yang dicopy sedang mode custom)
+            const tSelect = newRow.querySelector('.treatment-select');
+            const tInput = newRow.querySelector('.treatment-input');
+            const chevron = newRow.querySelector('.chevron-icon');
+            tSelect.classList.remove('hidden'); tSelect.disabled = false;
+            tInput.classList.add('hidden'); tInput.disabled = true; tInput.value = '';
+            if(chevron) chevron.classList.remove('hidden');
             
             newRow.querySelectorAll('input').forEach(i => {
                 if (i.classList.contains('hidden-item')) i.value = mainItemValue; 
                 else if (i.classList.contains('hidden-catatan')) i.value = mainCatatanValue;
+                else if (i.classList.contains('hidden-estimasi')) i.value = mainEstimasiValue;
                 else { 
                     i.value = ''; 
-                    if(i.name === 'tanggal_keluar[]') {
-                        i.style.color = 'transparent';
-                        i.nextElementSibling.classList.remove('hidden');
-                    }
                 }
             });
             
@@ -666,7 +764,7 @@
                 const newGroup = container.querySelector('.item-group').cloneNode(true); 
                 newGroup.querySelectorAll('input').forEach(i => { 
                     i.value = ''; 
-                    if(i.name === 'tanggal_keluar[]') {
+                    if(i.classList.contains('main-estimasi-input')) {
                         i.style.color = 'transparent';
                         i.nextElementSibling.classList.remove('hidden');
                     }

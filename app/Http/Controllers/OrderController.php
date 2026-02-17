@@ -314,7 +314,7 @@ class OrderController extends Controller
                     'nama_barang'     => $rawItems[$i],
                     'layanan'         => $request->kategori_treatment[$i] ?? 'General',
                     'harga'           => $harga,
-                    'estimasi_keluar' => $request->tanggal_keluar[$i] ?? null,
+                    'estimasi_keluar' => !empty($request->tanggal_keluar[$i]) ? $request->tanggal_keluar[$i] : null,
                     'catatan'         => $request->catatan[$i] ?? null,
                     'status'          => 'Proses',
                 ]);
@@ -383,14 +383,12 @@ class OrderController extends Controller
         }
 
         if ($type == '1') {
-            // VALIDASI: Hanya kirim jika SEMUA item berstatus 'Proses'
-            // Mengantisipasi salah klik jika pesanan sudah berjalan/selesai
-            $nonProsesCount = $order->details->where('status', '!=', 'Proses')->count();
-            if ($nonProsesCount > 0) {
+            // VALIDASI: Hanya kirim jika Status Order adalah 'Proses'
+            if ($order->status_order != 'Proses') {
                 if ($request->ajax()) {
-                    return response()->json(['status' => 'error', 'message' => 'WA Sent 1 hanya bisa dikirim jika semua item berstatus PROSES.']);
+                    return response()->json(['status' => 'error', 'message' => 'WA Masuk hanya bisa dikirim jika status pesanan PROSES.']);
                 }
-                return back()->with('error', 'Gagal: Ada item yang bukan status Proses.');
+                return back()->with('error', 'Gagal: Status pesanan bukan Proses.');
             }
 
             $order->wa_sent_1 = !$order->wa_sent_1;
@@ -425,6 +423,14 @@ class OrderController extends Controller
             }
 
         } elseif ($type == '2') {
+            // VALIDASI: Hanya kirim jika WA 1 sudah dikirim
+            if (!$order->wa_sent_1) {
+                if ($request->ajax()) {
+                    return response()->json(['status' => 'error', 'message' => 'WA Pengambilan hanya bisa dikirim jika WA Masuk sudah dikirim.']);
+                }
+                return back()->with('error', 'Gagal: WA Masuk belum dikirim.');
+            }
+
             $order->wa_sent_2 = !$order->wa_sent_2;
 
             // Jika status berubah jadi TERKIRIM (True), buat link WA Pengambilan
@@ -461,28 +467,15 @@ class OrderController extends Controller
                     } else {
                         $msg .= "Update status pesanan No Nota: *{$order->no_invoice}*.\n\n";
                     }
-                    $msg .= "{$detailsList}\n\n";
-                    
-                    if ($processCount > 0) {
-                         $msg .= "Mohon ditunggu untuk item yang masih diproses ya kak.\n\n";
-                    }
-                } elseif ($processCount > 0 && $finishedCount > 0) {
-                    // KASUS: Sebagian Selesai, Sebagian Belum (Belum ada yang diambil sama sekali)
-                    $msg .= "Menginfokan update pesanan No Nota: *{$order->no_invoice}*\n\n";
-                    $msg .= "{$detailsList}\n\n";
-                    $msg .= "Saat ini *sebagian sepatu sudah selesai*, namun ada yang masih dalam proses pengerjaan.\n";
-                    $msg .= "Apakah yang sudah selesai ingin diambil duluan atau menunggu sekalian selesai semua kak?\n\n";
                 } else {
-                    // KASUS: Semua Selesai (Standard)
-                    $msg .= "Kabar gembira! Pesanan Kakak dengan No Nota: *{$order->no_invoice}* sudah selesai dan siap diambil.\n\n";
-                    $msg .= "{$detailsList}\n\n";
+                    $msg .= "Pesanan kakak No Nota: *{$order->no_invoice}* sudah selesai dan siap diambil ya kak.\n\n";
                 }
 
+                $msg .= "{$detailsList}\n\n";
                 $msg .= "Total Harga: *Rp {$total}*\n";
                 $msg .= "{$infoBayar}\n\n";
-                // $msg .= "*Link Nota Digital (Download PDF):*\n{$linkInvoice}\n\n";
-                $msg .= "Mohon save nomor kami untuk mempermudah komunikasi ya kak. Terima kasih telah mempercayakan sepatu kakak di *Louwes Care*.\n";
-                
+                $msg .= "Mohon bawa nota saat pengambilan ya kak. Terima kasih!\n";
+
                 $waUrl = "https://wa.me/{$phone}?text=" . urlencode($msg);
             }
         }
@@ -491,160 +484,80 @@ class OrderController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'status' => 'success', 
-                'wa_sent_1' => $order->wa_sent_1, 
+                'status' => 'success',
+                'wa_sent_1' => $order->wa_sent_1,
                 'wa_sent_2' => $order->wa_sent_2,
-                'wa_url' => $waUrl // Kirim URL ke frontend
+                'wa_url' => $waUrl
             ]);
         }
-        
-        if ($waUrl) return redirect($waUrl);
-        return back()->with('success', 'Status WA diperbarui.');
+
+        return back()->with('success', 'Status WA berhasil diubah.');
     }
 
-    // --- HELPER FUNCTIONS ---
-
+    /**
+     * 5. CEK CUSTOMER (FORM POST)
+     * Digunakan saat submit dari halaman Cek Customer (cek-customer.blade.php)
+     */
     public function check(Request $request)
     {
-        $customer = Customer::where('no_hp', $request->no_hp)->with('member')->first();
-        $treatments = Treatment::orderBy('nama_treatment', 'asc')->get(); 
-        $karyawans = Karyawan::orderBy('nama_karyawan', 'asc')->get();
-        $nominalDiskon = Setting::getDiskonMember(); // Ambil dari database
+        $request->validate([
+            'no_hp' => 'required',
+        ]);
+
+        $no_hp = $request->no_hp;
+        $customer = Customer::with('member')->where('no_hp', $no_hp)->first();
         
-        $data = [
-            'no_hp' => $request->no_hp,
-            'customer' => null,
-            'status' => 'New Customer',
-            'tipe_pilihan' => '', // Untuk mengisi form Tipe Customer
-            'color' => 'text-blue-500 bg-blue-50 border-blue-200',
-            'is_member' => false,
-            'poin' => 0,
-            'treatments' => $treatments,
-            'karyawans' => $karyawans,
-            'nominal_diskon' => $nominalDiskon // Kirim ke view
-        ];
+        $status = 'New Customer';
+        $is_member = false;
+        $poin = 0;
+        $color = 'text-blue-600 bg-blue-100 border-blue-200';
+        $tipe_pilihan = '';
 
         if ($customer) {
-            $data['customer'] = $customer;
-            $data['no_hp'] = $customer->no_hp;
-            $data['tipe_pilihan'] = $customer->tipe; // Mengambil tipe asli dari DB (misal: 'VVIP')
-
+            $tipe_pilihan = $customer->tipe;
             if ($customer->member) {
-                $data['status'] = 'MEMBER';
-                $data['color'] = 'text-pink-600 bg-pink-100 border-pink-200';
-                $data['is_member'] = true;
-                $data['poin'] = $customer->member->poin;
+                $status = 'Member';
+                $is_member = true;
+                $poin = $customer->member->poin;
+                $color = 'text-pink-600 bg-pink-100 border-pink-200';
             } else {
-                $data['status'] = 'Repeat Order';
-                $data['color'] = 'text-green-600 bg-green-100 border-green-200';
-                $data['is_member'] = false;
+                $status = 'Repeat Order';
+                $color = 'text-green-600 bg-green-100 border-green-200';
             }
         }
-        return view('input-order', $data);
+
+        // Data pendukung untuk view input-order
+        $treatments = Treatment::orderBy('kategori', 'asc')->get();
+        $karyawans = Karyawan::orderBy('nama_karyawan', 'asc')->get();
+        $nominal_diskon = Setting::getDiskonMember(); 
+
+        return view('input-order', compact('customer', 'no_hp', 'status', 'is_member', 'poin', 'color', 'treatments', 'karyawans', 'nominal_diskon', 'tipe_pilihan'));
     }
 
+    /**
+     * 6. CEK CUSTOMER (AJAX)
+     * Digunakan untuk live check di halaman Input Order (input-order.blade.php)
+     */
     public function checkCustomer(Request $request)
     {
-        $customer = Customer::with('member')->where('no_hp', $request->no_hp)->first();
-        
-        if ($customer) {
-            $poin = $customer->member ? $customer->member->poin : 0;
-            $badge = $customer->member ? 'Member' : 'Repeat Order';
+        $hp = $request->no_hp;
+        $customer = Customer::with('member')->where('no_hp', $hp)->first();
 
+        if ($customer) {
+            $badge = $customer->member ? 'Member' : 'Repeat Order';
+            $poin = $customer->member ? $customer->member->poin : 0;
+            
             return response()->json([
                 'found' => true,
                 'nama' => $customer->nama,
-                'badge' => $badge,        
-                'tipe_form' => $customer->tipe, // Data asli tipe dari tabel customers
+                'tipe_form' => $customer->tipe ?? '', 
                 'sumber_info' => $customer->sumber_info,
+                'badge' => $badge,
                 'poin' => $poin,
-                'target' => 8,
-                'bisa_claim' => $poin >= 8,
-                'member_id' => $customer->member ? $customer->member->id : null,
+                'member_id' => $customer->member ? $customer->member->id : null
             ]);
         }
+
         return response()->json(['found' => false]);
-    }
-
-    public function invoice($id)
-    {
-        $order = Order::with(['customer.member', 'details'])->findOrFail($id);
-        $treatments = Treatment::orderBy('nama_treatment', 'asc')->get();
-        $karyawans = Karyawan::orderBy('nama_karyawan', 'asc')->get();
-        $nominalDiskon = Setting::getDiskonMember();
-        return view('pesanan.show', compact('order', 'treatments', 'karyawans', 'nominalDiskon'));
-    }
-
-    /**
-     * CETAK STRUK VIA LAN / WIFI (Backend Socket)
-     */
-    public function printLan(Request $request, $id)
-    {
-        // Validasi Input dari Frontend
-        $request->validate([
-            'ip' => 'required',
-            'port' => 'required',
-        ]);
-
-        $order = Order::with(['customer', 'details'])->findOrFail($id);
-        
-        $ip = $request->input('ip');
-        $port = $request->input('port');
-        $headerText = $request->input('header_text', 'LOUWES CARE');
-        $footerText = $request->input('footer_text', 'Terima Kasih');
-
-        try {
-            // 1. Buka koneksi socket ke printer (Timeout 3 detik)
-            $connector = fsockopen($ip, $port, $errno, $errstr, 3);
-            
-            if (!$connector) {
-                return response()->json(['status' => 'error', 'message' => "Gagal koneksi ke printer: $errstr ($errno)"], 500);
-            }
-
-            // 2. Susun Perintah ESC/POS
-            $esc = "\x1b";
-            $gs = "\x1d";
-            $init = $esc . "@";
-            $center = $esc . "a" . "\x01";
-            $left = $esc . "a" . "\x00";
-
-            $data = $init;
-            $data .= $center . $headerText . "\n";
-            $data .= "--------------------------------\n";
-            $data .= $left;
-            $data .= "No Nota : " . $order->no_invoice . "\n";
-            $data .= "Tgl     : " . $order->created_at->format('d/m/Y H:i') . "\n";
-            $data .= "Plg     : " . ($order->customer ? $order->customer->nama : 'Guest') . "\n";
-            $data .= "--------------------------------\n";
-
-            foreach ($order->details as $item) {
-                $data .= $item->nama_barang . "\n";
-                $data .= "   " . $item->layanan . " : Rp " . number_format($item->harga, 0, ',', '.') . "\n";
-            }
-
-            $data .= "--------------------------------\n";
-            $data .= "TOTAL   : Rp " . number_format($order->total_harga, 0, ',', '.') . "\n";
-            $data .= "--------------------------------\n";
-            $data .= $center . $footerText . "\n\n\n\n"; // Feed lines agar kertas keluar
-
-            // 3. Kirim Data & Tutup Koneksi
-            fwrite($connector, $data);
-            fclose($connector);
-
-            return response()->json(['status' => 'success', 'message' => 'Struk berhasil dikirim ke printer.']);
-
-        } catch (\Exception $e) {
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * HALAMAN PUBLIC INVOICE (Untuk Share WA)
-     */
-    public function publicInvoice($id)
-    {
-        // Ambil data order (Tanpa auth check karena public)
-        $order = Order::with(['customer', 'details'])->findOrFail($id);
-        return view('pesanan.public_invoice', compact('order'));
     }
 }
