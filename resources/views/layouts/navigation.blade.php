@@ -12,6 +12,13 @@
                     </svg>
                 </button>
 
+                {{-- LOGO APLIKASI --}}
+                <div class="shrink-0 flex items-center ml-4 md:ml-0 mr-6">
+                    <a href="{{ route('dashboard') }}">
+                        <x-application-logo class="block h-16 w-16" />
+                    </a>
+                </div>
+
                 {{-- 2. Menu Links (Hanya muncul di Desktop / hidden md:flex) --}}
                 {{-- Link yang Anda kirim saya letakkan di sini --}}
                 <div class="hidden md:flex space-x-8 sm:ml-10 h-full">

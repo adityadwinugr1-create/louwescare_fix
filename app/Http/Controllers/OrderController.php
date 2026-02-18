@@ -97,24 +97,78 @@ class OrderController extends Controller
 
             // --- A. LOGIKA KLAIM POIN ---
             $klaimStatus = $order->klaim; 
-            
-            if ($request->filled('claim_type') && empty($order->klaim)) {
-                $member = $order->customer->member;
-                if ($member && $member->poin >= 8) {
-                    $member->decrement('poin', 8); 
-                    if ($request->claim_type == 'diskon') $klaimStatus = 'Diskon'; 
-                    elseif ($request->claim_type == 'parfum') $klaimStatus = 'Parfum'; 
+            $staticDiscount = 0;
 
+            // 1. Parse Existing Claim (Hitung jumlah yang SUDAH diklaim sebelumnya)
+            $existingDiskon = 0;
+            $existingParfum = 0;
+
+            if ($klaimStatus) {
+                if (preg_match('/(\d+)\s*x\s*Diskon/', $klaimStatus, $matches)) {
+                    $existingDiskon = (int)$matches[1];
+                } elseif (strpos($klaimStatus, 'Diskon') !== false) {
+                    $existingDiskon = 1;
+                }
+                
+                if (preg_match('/(\d+)\s*x\s*Parfum/', $klaimStatus, $matches)) {
+                    $existingParfum = (int)$matches[1];
+                } elseif (strpos($klaimStatus, 'Parfum') !== false) {
+                    $existingParfum = 1;
+                }
+            }
+            
+            // 2. Tentukan Target State (Jumlah yang diinginkan user sekarang)
+            // Default target adalah existing (jika tidak ada perubahan input)
+            $targetDiskon = $request->filled('claim_diskon_qty') ? (int)$request->claim_diskon_qty : $existingDiskon;
+            $targetParfum = $request->filled('claim_parfum_qty') ? (int)$request->claim_parfum_qty : $existingParfum;
+
+            // 3. Hitung Selisih (Diff) untuk Penyesuaian Poin
+            $diffDiskon = $targetDiskon - $existingDiskon;
+            $diffParfum = $targetParfum - $existingParfum;
+            $pointsNeeded = ($diffDiskon + $diffParfum) * 8;
+
+            $member = $order->customer->member;
+
+            // Jika butuh poin tambahan (User menambah klaim)
+            if ($pointsNeeded > 0) {
+                if ($member && $member->poin >= $pointsNeeded) {
+                    $member->decrement('poin', $pointsNeeded);
                     PointHistory::create([
                         'member_id'   => $member->id,
                         'order_id'    => $order->id,
-                        'amount'      => -8,
+                        'amount'      => -$pointsNeeded,
                         'type'        => 'redeem',
-                        'description' => 'Tukar ' . $klaimStatus . ' (Edit Order)'
+                        'description' => 'Penambahan Klaim (Edit)'
+                    ]);
+                } else {
+                    // Poin tidak cukup
+                    if ($request->ajax()) return response()->json(['status' => 'error', 'message' => "Poin tidak cukup. Butuh {$pointsNeeded} poin tambahan."], 422);
+                    return back()->with('error', "Poin tidak cukup. Butuh {$pointsNeeded} poin tambahan.");
+                }
+            } 
+            // Jika poin berkurang (User membatalkan/mengurangi klaim) -> Refund Poin
+            elseif ($pointsNeeded < 0) {
+                $refundAmount = abs($pointsNeeded);
+                $member = $order->customer->member;
+                if ($member) {
+                    $member->increment('poin', $refundAmount);
+                    PointHistory::create([
+                        'member_id'   => $member->id,
+                        'order_id'    => $order->id,
+                        'amount'      => $refundAmount,
+                        'type'        => 'refund',
+                        'description' => 'Pengurangan Klaim (Edit)'
                     ]);
                 }
             }
-            $staticDiscount = ($klaimStatus === 'Diskon') ? Setting::getDiskonMember() : 0;
+
+            // 4. Bangun string status & hitung total diskon
+            $klaimParts = [];
+            if ($targetDiskon > 0) $klaimParts[] = $targetDiskon . ' x Diskon';
+            if ($targetParfum > 0) $klaimParts[] = $targetParfum . ' x Parfum';
+
+            $klaimStatus = count($klaimParts) > 0 ? implode(', ', $klaimParts) : null;
+            $staticDiscount = $targetDiskon * Setting::getDiskonMember();
 
             // --- B. UPDATE ORDER HEADER ---
             $updateData = [
@@ -163,11 +217,11 @@ class OrderController extends Controller
                         $subtotalItem += $harga;
                     }
                 }
-                $order->total_harga = $subtotalItem - $staticDiscount;
+                $order->total_harga = max(0, $subtotalItem - $staticDiscount);
                 $order->save();
             } else {
                 $subtotalItem = $order->details->sum('harga');
-                $order->total_harga = $subtotalItem - $staticDiscount;
+                $order->total_harga = max(0, $subtotalItem - $staticDiscount);
                 $order->save();
             }
 
@@ -256,19 +310,36 @@ class OrderController extends Controller
                 $customerData
             );
 
-            // --- LOGIKA DISKON MEMBER ---
+            // --- LOGIKA DISKON MEMBER BARU (MULTIPLE KLAIM) ---
             $staticDiscount = 0;
             $klaimColumnValue = null; 
             $isRedeeming = false;
+            $pointsToDeduct = 0;
+            $klaimParts = [];
 
-            if ($customer->member && $customer->member->poin >= 8 && $request->filled('claim_type')) {
-                if ($request->claim_type === 'diskon') {
-                    $staticDiscount = Setting::getDiskonMember();
-                    $klaimColumnValue = 'Diskon'; 
+            $qtyDiskon = $request->filled('claim_diskon_qty') ? (int)$request->claim_diskon_qty : 0;
+            $qtyParfum = $request->filled('claim_parfum_qty') ? (int)$request->claim_parfum_qty : 0;
+            $totalPointsNeeded = ($qtyDiskon + $qtyParfum) * 8;
+
+            if ($totalPointsNeeded > 0) {
+                // Validasi: Pastikan poin cukup (Kelipatan 8)
+                if ($customer->member && $customer->member->poin >= $totalPointsNeeded) {
                     $isRedeeming = true;
-                } elseif ($request->claim_type === 'parfum') {
-                    $klaimColumnValue = 'Parfum'; 
-                    $isRedeeming = true;
+                    $pointsToDeduct = $totalPointsNeeded;
+                    
+                    if ($qtyDiskon > 0) {
+                        $staticDiscount = $qtyDiskon * Setting::getDiskonMember();
+                        $klaimParts[] = $qtyDiskon . ' x Diskon';
+                    }
+                    if ($qtyParfum > 0) {
+                        $klaimParts[] = $qtyParfum . ' x Parfum';
+                    }
+                    
+                    $klaimColumnValue = implode(', ', $klaimParts);
+                } else {
+                    DB::rollBack(); // Batalkan transaksi jika poin tidak cukup
+                    if ($request->ajax()) return response()->json(['status' => 'error', 'message' => "Poin tidak cukup. Butuh {$totalPointsNeeded} poin."], 422);
+                    return back()->with('error', "Poin tidak cukup. Butuh {$totalPointsNeeded} poin.")->withInput();
                 }
             }
 
@@ -327,15 +398,15 @@ class OrderController extends Controller
             }
 
             if ($isRedeeming) {
-                $customer->member->decrement('poin', 8);
-                PointHistory::create([
-                    'member_id'   => $customer->member->id,
-                    'order_id'    => $order->id,
-                    'amount'      => -8,
-                    'type'        => 'redeem',
-                    'description' => 'Tukar ' . $klaimColumnValue
-                ]);
-            }
+            $customer->member->decrement('poin', $pointsToDeduct);
+            PointHistory::create([
+                'member_id'   => $customer->member->id,
+                'order_id'    => $order->id,
+                'amount'      => -$pointsToDeduct,
+                'type'        => 'redeem',
+                'description' => 'Tukar ' . $klaimColumnValue
+            ]);
+        }
 
             if ($customer->member) {
                 $customer->member->increment('total_transaksi', $subtotalItem);
@@ -389,12 +460,14 @@ class OrderController extends Controller
         }
 
         if ($type == '1') {
-            // VALIDASI: Hanya kirim jika Status Order adalah 'Proses'
-            if ($order->status_order != 'Proses') {
+            // VALIDASI: Hanya kirim jika SEMUA item berstatus 'Proses'
+            // Mengantisipasi salah klik jika pesanan sudah berjalan/selesai
+            $nonProsesCount = $order->details->where('status', '!=', 'Proses')->count();
+            if ($nonProsesCount > 0) {
                 if ($request->ajax()) {
-                    return response()->json(['status' => 'error', 'message' => 'WA Masuk hanya bisa dikirim jika status pesanan PROSES.']);
+                    return response()->json(['status' => 'error', 'message' => 'WA Sent 1 hanya bisa dikirim jika semua item berstatus PROSES.']);
                 }
-                return back()->with('error', 'Gagal: Status pesanan bukan Proses.');
+                return back()->with('error', 'Gagal: Ada item yang bukan status Proses.');
             }
 
             $order->wa_sent_1 = !$order->wa_sent_1;
@@ -429,14 +502,6 @@ class OrderController extends Controller
             }
 
         } elseif ($type == '2') {
-            // VALIDASI: Hanya kirim jika WA 1 sudah dikirim
-            if (!$order->wa_sent_1) {
-                if ($request->ajax()) {
-                    return response()->json(['status' => 'error', 'message' => 'WA Pengambilan hanya bisa dikirim jika WA Masuk sudah dikirim.']);
-                }
-                return back()->with('error', 'Gagal: WA Masuk belum dikirim.');
-            }
-
             $order->wa_sent_2 = !$order->wa_sent_2;
 
             // Jika status berubah jadi TERKIRIM (True), buat link WA Pengambilan
@@ -473,15 +538,28 @@ class OrderController extends Controller
                     } else {
                         $msg .= "Update status pesanan No Nota: *{$order->no_invoice}*.\n\n";
                     }
+                    $msg .= "{$detailsList}\n\n";
+                    
+                    if ($processCount > 0) {
+                         $msg .= "Mohon ditunggu untuk item yang masih diproses ya kak.\n\n";
+                    }
+                } elseif ($processCount > 0 && $finishedCount > 0) {
+                    // KASUS: Sebagian Selesai, Sebagian Belum (Belum ada yang diambil sama sekali)
+                    $msg .= "Menginfokan update pesanan No Nota: *{$order->no_invoice}*\n\n";
+                    $msg .= "{$detailsList}\n\n";
+                    $msg .= "Saat ini *sebagian sepatu sudah selesai*, namun ada yang masih dalam proses pengerjaan.\n";
+                    $msg .= "Apakah yang sudah selesai ingin diambil duluan atau menunggu sekalian selesai semua kak?\n\n";
                 } else {
-                    $msg .= "Pesanan kakak No Nota: *{$order->no_invoice}* sudah selesai dan siap diambil ya kak.\n\n";
+                    // KASUS: Semua Selesai (Standard)
+                    $msg .= "Kabar gembira! Pesanan Kakak dengan No Nota: *{$order->no_invoice}* sudah selesai dan siap diambil.\n\n";
+                    $msg .= "{$detailsList}\n\n";
                 }
 
-                $msg .= "{$detailsList}\n\n";
                 $msg .= "Total Harga: *Rp {$total}*\n";
                 $msg .= "{$infoBayar}\n\n";
-                $msg .= "Mohon bawa nota saat pengambilan ya kak. Terima kasih!\n";
-
+                // $msg .= "*Link Nota Digital (Download PDF):*\n{$linkInvoice}\n\n";
+                $msg .= "Mohon save nomor kami untuk mempermudah komunikasi ya kak. Terima kasih telah mempercayakan sepatu kakak di *Louwes Care*.\n";
+                
                 $waUrl = "https://wa.me/{$phone}?text=" . urlencode($msg);
             }
         }
@@ -490,14 +568,15 @@ class OrderController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'status' => 'success',
-                'wa_sent_1' => $order->wa_sent_1,
+                'status' => 'success', 
+                'wa_sent_1' => $order->wa_sent_1, 
                 'wa_sent_2' => $order->wa_sent_2,
-                'wa_url' => $waUrl
+                'wa_url' => $waUrl // Kirim URL ke frontend
             ]);
         }
-
-        return back()->with('success', 'Status WA berhasil diubah.');
+        
+        if ($waUrl) return redirect($waUrl);
+        return back()->with('success', 'Status WA diperbarui.');
     }
 
     /**

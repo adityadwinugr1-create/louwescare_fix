@@ -31,7 +31,8 @@
             <input type="hidden" name="member_id" id="member_id" value="{{ $customer->member->id ?? '' }}">
             <input type="hidden" name="metode_pembayaran" id="input_metode_pembayaran" value="Tunai">
             <input type="hidden" name="status_pembayaran" id="input_status_pembayaran" value="Lunas">
-            <input type="hidden" name="claim_type" id="input_claim_type" value="">
+            <input type="hidden" name="claim_diskon_qty" id="input_claim_diskon_qty" value="0">
+            <input type="hidden" name="claim_parfum_qty" id="input_claim_parfum_qty" value="0">
             <input type="hidden" id="input_discount_amount" value="0">
 
             {{-- DATA PELANGGAN --}}
@@ -371,23 +372,60 @@
 
     @include('components.member-modal')
 
-    {{-- MODAL CLAIM --}}
-    <div id="modal-claim-reward" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-60 hidden" onclick="window.closeClaimModal()">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-fade-in" onclick="event.stopPropagation()">
-            <div class="bg-[#3b66ff] p-4 flex justify-between items-center"><h3 class="text-white font-bold text-lg">Pilih Reward</h3><button type="button" onclick="window.closeClaimModal()" class="text-white font-bold text-2xl">&times;</button></div>
-            <div class="p-6">
-                <div class="mb-6 bg-blue-50 p-4 rounded-xl text-center border border-blue-100"><span class="text-xs text-blue-600 font-bold uppercase">Poin Kamu</span><div class="text-3xl font-black text-[#3b66ff] mt-1"><span id="display-poin-modal">0</span> pts</div></div>
-                <div class="space-y-3 mb-6">
-                    <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition">
-                        <input type="radio" name="reward_option" value="diskon" class="mr-3 text-[#3b66ff]" checked>
-                        <div><p class="font-bold text-sm text-gray-800">Diskon Tunai Rp {{ number_format($nominal_diskon ?? 10000, 0, ',', '.') }}</p></div>
+{{-- MODAL CLAIM --}}
+<div id="modal-claim-reward" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-60 hidden" onclick="window.closeClaimModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-fade-in" onclick="event.stopPropagation()">
+        <div class="bg-[#3b66ff] p-4 flex justify-between items-center">
+            <h3 class="text-white font-bold text-lg">Pilih Reward</h3>
+            <button type="button" onclick="window.closeClaimModal()" class="text-white font-bold text-2xl">&times;</button>
+        </div>
+        <div class="p-6">
+            <div class="mb-6 bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
+                <span class="text-xs text-blue-600 font-bold uppercase">Poin Kamu</span>
+                <div class="text-3xl font-black text-[#3b66ff] mt-1"><span id="display-poin-modal">0</span> pts</div>
+            </div>
+            
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between items-center p-3 border rounded-lg hover:bg-gray-50 transition">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="check_diskon" class="form-checkbox text-[#3b66ff] rounded w-5 h-5 mr-3 focus:ring-blue-500" onchange="toggleCheckbox('diskon')">
+                        <div>
+                            <p class="font-bold text-sm text-gray-800">Diskon Rp {{ number_format($nominal_diskon ?? 10000, 0, ',', '.') }}</p>
+                            <p class="text-[10px] text-gray-500 font-bold uppercase">8 Poin / Klaim</p>
+                        </div>
                     </label>
-                    <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition"><input type="radio" name="reward_option" value="parfum" class="mr-3 text-[#3b66ff]"><div><p class="font-bold text-sm text-gray-800">Free Parfum (8 Poin)</p></div></label>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-600 font-bold">Qty:</span>
+                        <input type="number" id="modal_qty_diskon" min="0" value="0" oninput="syncCheckbox('diskon')" class="w-14 px-2 py-1 border-gray-300 rounded-md text-center font-bold text-sm focus:ring-blue-500 shadow-sm">
+                    </div>
                 </div>
-                <div class="flex justify-end space-x-3"><button type="button" onclick="window.closeClaimModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg font-bold">Batal</button><button type="button" onclick="window.applyReward()" class="px-6 py-2 bg-[#3b66ff] text-white rounded-lg font-bold shadow-lg">Terapkan</button></div>
+                
+                <div class="flex justify-between items-center p-3 border rounded-lg hover:bg-gray-50 transition">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="check_parfum" class="form-checkbox text-[#3b66ff] rounded w-5 h-5 mr-3 focus:ring-blue-500" onchange="toggleCheckbox('parfum')">
+                        <div>
+                            <p class="font-bold text-sm text-gray-800">Free Parfum</p>
+                            <p class="text-[10px] text-gray-500 font-bold uppercase">8 Poin / Klaim</p>
+                        </div>
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-600 font-bold">Qty:</span>
+                        <input type="number" id="modal_qty_parfum" min="0" value="0" oninput="syncCheckbox('parfum')" class="w-14 px-2 py-1 border-gray-300 rounded-md text-center font-bold text-sm focus:ring-blue-500 shadow-sm">
+                    </div>
+                </div>
+                
+                <div id="claim-warning" class="text-xs text-red-500 font-bold text-center mt-2 hidden">
+                    Poin tidak mencukupi untuk jumlah klaim ini!
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="window.closeClaimModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg font-bold">Batal</button>
+                <button type="button" id="btn-apply-reward" onclick="window.applyReward()" class="px-6 py-2 bg-[#3b66ff] text-white rounded-lg font-bold shadow-lg">Terapkan</button>
             </div>
         </div>
     </div>
+</div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
@@ -549,26 +587,102 @@
             calculateChange();
         }
 
+// ======= JAVASCRIPT LOGIKA KLAIM REWARD =======
+
         window.openClaimModal = function() {
             let currentPoin = parseInt(document.getElementById('poin-text').innerText.split('/')[0]) || 0; 
             document.getElementById('display-poin-modal').innerText = currentPoin; 
+            
+            // Reset semua input & checkbox saat modal dibuka
+            document.getElementById('check_diskon').checked = false;
+            document.getElementById('check_parfum').checked = false;
+            document.getElementById('modal_qty_diskon').value = 0;
+            document.getElementById('modal_qty_parfum').value = 0;
+            
+            window.validatePointsClaim(); 
             document.getElementById('modal-claim-reward').classList.remove('hidden'); 
         }
-        window.closeClaimModal = function() { document.getElementById('modal-claim-reward').classList.add('hidden'); }
+
+        window.closeClaimModal = function() { 
+            document.getElementById('modal-claim-reward').classList.add('hidden'); 
+        }
+
+        // Fungsi jika user KLiK CHECKBOX
+        window.toggleCheckbox = function(type) {
+            let checkbox = document.getElementById('check_' + type);
+            let input = document.getElementById('modal_qty_' + type);
+
+            if (checkbox.checked) {
+                if (input.value == 0) input.value = 1; // Otomatis isi 1 jika dicentang
+            } else {
+                input.value = 0; // Kembalikan ke 0 jika tidak dicentang
+            }
+            window.validatePointsClaim();
+        }
+
+        // Fungsi jika user KETIK ANGKA QTY
+        window.syncCheckbox = function(type) {
+            let checkbox = document.getElementById('check_' + type);
+            let input = document.getElementById('modal_qty_' + type);
+
+            if (input.value > 0) {
+                checkbox.checked = true; // Otomatis centang jika angka lebih dari 0
+            } else {
+                checkbox.checked = false;
+            }
+            window.validatePointsClaim();
+        }
+
+        // Fungsi Cek Poin Validasi
+        window.validatePointsClaim = function() {
+            let currentPoin = parseInt(document.getElementById('display-poin-modal').innerText) || 0;
+            
+            let qtyDiskon = document.getElementById('check_diskon').checked ? (parseInt(document.getElementById('modal_qty_diskon').value) || 0) : 0;
+            let qtyParfum = document.getElementById('check_parfum').checked ? (parseInt(document.getElementById('modal_qty_parfum').value) || 0) : 0;
+            
+            let totalPointsNeeded = (qtyDiskon * 8) + (qtyParfum * 8);
+            
+            let warningText = document.getElementById('claim-warning');
+            let applyBtn = document.getElementById('btn-apply-reward');
+
+            if (totalPointsNeeded > currentPoin) {
+                warningText.classList.remove('hidden');
+                applyBtn.disabled = true;
+                applyBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                warningText.classList.add('hidden');
+                applyBtn.disabled = false;
+                applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // Fungsi Terapkan Reward
         window.applyReward = function() {
-            const radio = document.querySelector('input[name="reward_option"]:checked'); 
-            if (!radio) { alert("Pilih reward dulu!"); return; }
-            const choice = radio.value; 
-            const nominalDiskon = {{ $nominal_diskon ?? 10000 }};
-            const discount = (choice === 'diskon') ? nominalDiskon : 0;
-            $('#input_claim_type').val(choice);
-            $('#input_discount_amount').val(discount);
-            let badgeText = choice === 'diskon' ? 'Reward: Diskon ' + (nominalDiskon/1000) + 'rb' : 'Reward: Free Parfum';
-            $('#reward-badge').text(badgeText).removeClass('hidden');
+            let qtyDiskon = document.getElementById('check_diskon').checked ? (parseInt(document.getElementById('modal_qty_diskon').value) || 0) : 0;
+            let qtyParfum = document.getElementById('check_parfum').checked ? (parseInt(document.getElementById('modal_qty_parfum').value) || 0) : 0;
+            
+            if (qtyDiskon === 0 && qtyParfum === 0) {
+                alert("Pilih minimal satu reward dengan quantity lebih dari 0!");
+                return;
+            }
+
+            const nominalDiskonPerItem = {{ $nominal_diskon ?? 10000 }};
+            const totalDiscount = qtyDiskon * nominalDiskonPerItem;
+            
+            let claimTexts = [];
+            if (qtyDiskon > 0) claimTexts.push(`${qtyDiskon}x Diskon`);
+            if (qtyParfum > 0) claimTexts.push(`${qtyParfum}x Parfum`);
+            let claimString = claimTexts.join(' & ');
+
+            $('#input_claim_type').val(claimString);
+            $('#input_discount_amount').val(totalDiscount);
+            
+            $('#reward-badge').text('Reward: ' + claimString).removeClass('hidden');
+            
             window.closeClaimModal();
             calculateGlobalTotal();
         }
-
+        
         window.submitOrder = function() {
             let formData = $('#orderForm').serialize();
             $.ajax({
@@ -653,7 +767,7 @@
             let msgDiv = $('#inv-claim-msg');
             if (data.claim_type === 'Diskon') { msgDiv.text('*** DISKON POIN DIGUNAKAN ***').removeClass('hidden'); }
             else if (data.claim_type === 'Parfum') { msgDiv.text('*** FREE PARFUM CLAIMED ***').removeClass('hidden'); }
-            else { msgDiv.addClass('hidden'); }
+            else { msgDiv.addClass('hidden'); } 
         }
 
         window.printInvoice = function() {

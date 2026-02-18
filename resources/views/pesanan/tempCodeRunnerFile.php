@@ -196,6 +196,23 @@
                                             @endforeach
                                         </tbody>
                                         <tfoot class="bg-gray-50/80 border-t border-gray-200">
+                                            {{-- INFO DISKON DYNAMIC --}}
+                                            @php
+                                                $qtyDiskonApplied = 0;
+                                                if($order->klaim) {
+                                                    if(preg_match('/(\d+)\s*x\s*Diskon/', $order->klaim, $m)) $qtyDiskonApplied = (int)$m[1];
+                                                    elseif(strpos($order->klaim, 'Diskon') !== false) $qtyDiskonApplied = 1;
+                                                }
+                                                $totalPotongan = $qtyDiskonApplied * ($nominalDiskon ?? 0);
+                                            @endphp
+
+                                            @if($totalPotongan > 0)
+                                            <tr>
+                                                <td colspan="5" class="px-4 py-2 text-right text-sm font-medium text-green-600 italic">
+                                                    Sudah dipotong Diskon Reward Rp {{ number_format($diskon, 0, ',', '.') }}
+                                                </td>
+                                            </tr>
+                                            @endif
                                             <tr>
                                                 <td colspan="4" class="px-4 py-3 text-right text-sm font-bold text-gray-600 uppercase tracking-wider">Total Tagihan</td>
                                                 <td class="px-4 py-3 text-right text-lg font-black text-blue-600">
@@ -248,55 +265,64 @@
                 </div>
 
                 {{-- FORM CLAIM --}}
-                <form id="formClaimReward" action="{{ route('members.claim') }}" method="POST">
+                <form id="formClaimReward" action="{{ route('pesanan.update', $order->id) }}" method="POST">
                     @csrf
-                    <input type="hidden" name="member_id" value="{{ $order->customer->member->id }}">
-                    <input type="hidden" name="order_id" value="{{ $order->id }}">
+                    @method('PATCH')
+                    
+                    {{-- Kirim data dummy agar validasi controller lolos --}}
+                    <input type="hidden" name="nama_customer" value="{{ $order->customer->nama }}">
+                    <input type="hidden" name="status" value="{{ $order->status_order }}">
 
                     {{-- Pilihan Reward --}}
                     <div class="mb-6">
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Pilih Reward</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            
-                            <label class="cursor-pointer">
-                                <input type="radio" name="reward_item" value="Diskon 10k" class="peer sr-only" checked>
-                                <div class="p-3 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 hover:bg-gray-50 transition">
-                                    <span class="font-bold text-sm block">Diskon 10k</span>
-                                    <span class="text-xs opacity-80 block mt-1">Potongan Harga</span>
-                                </div>
-                            </label>
+                        <label class="block text-sm font-bold text-gray-700 mb-4">Tentukan Jumlah Klaim (8 Poin / Item)</label>
+                        
+                        {{-- Hitung Nilai Awal (Existing) --}}
+                        @php
+                            $valDiskon = 0;
+                            $valParfum = 0;
+                            if($order->klaim) {
+                                if(preg_match('/(\d+)\s*x\s*Diskon/', $order->klaim, $m)) $valDiskon = $m[1];
+                                elseif(strpos($order->klaim, 'Diskon') !== false) $valDiskon = 1;
 
-                            <label class="cursor-pointer">
-                                <input type="radio" name="reward_item" value="Gratis Cuci 3kg" class="peer sr-only">
-                                <div class="p-3 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 hover:bg-gray-50 transition">
-                                    <span class="font-bold text-sm block">Gratis 3kg</span>
-                                    <span class="text-xs opacity-80 block mt-1">Layanan Regular</span>
-                                </div>
-                            </label>
+                                if(preg_match('/(\d+)\s*x\s*Parfum/', $order->klaim, $m)) $valParfum = $m[1];
+                                elseif(strpos($order->klaim, 'Parfum') !== false) $valParfum = 1;
+                            }
+                        @endphp
 
-                            <label class="cursor-pointer">
-                                <input type="radio" name="reward_item" value="Merchandise" class="peer sr-only">
-                                <div class="p-3 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 hover:bg-gray-50 transition">
-                                    <span class="font-bold text-sm block">Merchandise</span>
-                                    <span class="text-xs opacity-80 block mt-1">Mug / Kaos</span>
+                        <div class="space-y-4">
+                            {{-- Input Diskon --}}
+                            <div class="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <div>
+                                    <span class="font-bold text-gray-800 block">Diskon (Rp {{ number_format($nominalDiskon ?? 10000, 0, ',', '.') }})</span>
+                                    <span class="text-xs text-gray-500">Potongan langsung pada nota</span>
                                 </div>
-                            </label>
-
-                             <label class="cursor-pointer">
-                                <input type="radio" name="reward_item" value="Voucher Next" class="peer sr-only">
-                                <div class="p-3 text-center border-2 rounded-lg peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 hover:bg-gray-50 transition">
-                                    <span class="font-bold text-sm block">Voucher</span>
-                                    <span class="text-xs opacity-80 block mt-1">Next Order</span>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" name="claim_diskon_qty" value="{{ $valDiskon }}" min="0" 
+                                        class="w-20 text-center font-bold border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                                    <span class="text-sm font-bold text-gray-600">x</span>
                                 </div>
-                            </label>
+                            </div>
 
+                            {{-- Input Parfum --}}
+                            <div class="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <div>
+                                    <span class="font-bold text-gray-800 block">Parfum Gratis</span>
+                                    <span class="text-xs text-gray-500">Botol parfum sepatu</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" name="claim_parfum_qty" value="{{ $valParfum }}" min="0" 
+                                        class="w-20 text-center font-bold border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                                    <span class="text-sm font-bold text-gray-600">x</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     {{-- Footer Buttons --}}
                     <div class="flex justify-end space-x-3">
                         <button type="button" onclick="closeClaimModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200">Batal</button>
-                        <button type="submit" class="px-6 py-2 bg-[#3b66ff] text-white rounded-lg font-bold shadow-lg hover:bg-blue-700">Klaim</button>
+                        <button type="submit" class="px-6 py-2 bg-[#3b66ff] text-white rounded-lg font-bold shadow-lg hover:bg-blue-700">Simpan Klaim</button>
                     </div>
                 </form>
             </div>

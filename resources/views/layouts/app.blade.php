@@ -47,7 +47,7 @@
 
                 {{-- PROFILE INFO (STATIS SESUAI PERMINTAAN) --}}
                 <div class="flex flex-col items-center mb-10 shrink-0">
-                    <img src="{{ asset('assets/icons/pickup.png') }}" onerror="this.src='https://ui-avatars.com/api/?name=LC&background=random'" class="w-20 h-20 rounded-full border-2 border-gray-400 mb-2 object-cover">
+                    <img src="{{ asset('assets/icons/logolouwes.png') }}" onerror="this.src='https://ui-avatars.com/api/?name=LC&background=random'" class="w-20 h-20 rounded-full border-2 border-gray-400 mb-2 object-cover">
                     
                     <h2 class="font-bold text-lg">Louwes Care</h2>
                     <p class="text-xs text-gray-300 text-center mt-2">JL. Ringroad Timur No 9, Plumbon , Banguntapan , Bantul , DIY 55196</p>
