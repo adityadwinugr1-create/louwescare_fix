@@ -59,7 +59,7 @@
             </tr>
             @if($discount > 0)
             <tr>
-                <td>Diskon (Poin)</td>
+                <td>* Diskon Reward (Rp {{ number_format(\App\Models\Setting::getDiskonMember(), 0, ',', '.') }})</td>
                 <td align="right">- Rp {{ number_format($discount, 0, ',', '.') }}</td>
             </tr>
             @endif
@@ -74,13 +74,17 @@
         </table>
     </div>
 
-    @if(str_contains($order->catatan, '[KLAIM FREE PARFUM]'))
-    <div style="margin-top: 10px; border: 1px solid #000; padding: 5px; text-align: center;" class="bold">
-        *** FREE PARFUM ***
+   {{-- Memanggil data langsung dari kolom klaim --}}
+    @if($order->klaim)
+    <div style="margin-top: 10px; border: 1px dashed #000; padding: 5px; text-align: center;" class="bold">
+        *** REWARD: {{ strtoupper($order->klaim) }} ***
     </div>
     @endif
 
     <div class="footer">
+        @if($discount > 0)
+            <p class="bold" style="margin-bottom: 5px;">* Sudah dipotong Diskon Reward Rp {{ number_format(\App\Models\Setting::getDiskonMember(), 0, ',', '.') }}</p>
+        @endif
         <p>* Simpan nota ini sebagai bukti pengambilan</p>
         <p>Barang tidak diambil > 30 hari di luar tanggung jawab kami.</p>
         <p class="bold">-- Terima Kasih --</p>

@@ -239,7 +239,7 @@
                         <div class="mb-6 bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
                             <span class="text-xs text-blue-600 font-bold uppercase">Total Tagihan</span>
                             <div class="text-3xl font-black text-[#3b66ff] mt-1" id="display-total-bill">Rp 0</div>
-                            <p id="display-discount-msg" class="text-[10px] text-green-600 font-bold mt-1 italic hidden">* Sudah dipotong Diskon Reward Rp 10.000</p>
+                            <p id="display-discount-msg" class="text-[10px] text-green-600 font-bold mt-1 italic hidden">* Sudah dipotong Diskon Reward Rp {{ number_format($nominal_diskon ?? \App\Models\Setting::getDiskonMember(), 0, ',', '.') }}</p>
                         </div>
                         <div class="mb-4">
                             <label class="block text-sm font-bold text-gray-700 mb-2">Pilih Metode</label>
@@ -272,7 +272,7 @@
                 </div>
             </div>
 
-            {{-- 4. MODAL INVOICE POPUP --}}
+{{-- 4. MODAL INVOICE POPUP (SINKRON DENGAN MANAJEMEN PESANAN) --}}
             <div id="modal-invoice" class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900 bg-opacity-90" style="display: none;">
                 <div class="bg-white p-0 rounded-lg shadow-2xl overflow-hidden max-w-2xl w-full mx-4 relative flex flex-col max-h-[90vh]">
                     <div id="invoice-content" class="bg-white p-6 invoice-area text-xs leading-snug text-black overflow-y-auto">
@@ -285,7 +285,10 @@
                         </div>
                         <div class="thick-line mb-3"></div>
                         <div class="flex justify-between items-end mb-4">
-                            <div class="text-sm font-bold">CS Masuk: <span id="inv-cs-masuk" class="font-normal"></span><br>CS Keluar: <span id="inv-cs-keluar" class="font-normal"></span></div>
+                            <div class="text-sm font-bold">
+                                CS Masuk: <span id="inv-cs-masuk" class="font-normal"></span><br>
+                                CS Keluar: <span id="inv-cs-keluar" class="font-normal"></span>
+                            </div>
                             <div class="text-2xl font-bold tracking-widest">INVOICE</div>
                         </div>
                         <div class="border-b border-black mb-2"></div>
@@ -320,7 +323,7 @@
                             <div class="w-full sm:w-1/2">
                                 <table class="w-full text-[11px]">
                                     <tr><td class="py-1 text-gray-600">Subtotal</td><td class="py-1 text-right" id="inv-subtotal"></td></tr>
-                                    <tr class="dashed-line"><td class="py-1 text-gray-600">Diskon</td><td class="py-1 text-right" id="inv-discount"></td></tr>
+                                    <tr class="dashed-line" id="inv-discount-row"><td class="py-1 text-gray-600" id="inv-discount-label">Diskon</td><td class="py-1 text-right" id="inv-discount"></td></tr>
                                     <tr><td class="py-2 font-bold text-sm">TOTAL</td><td class="py-2 font-bold text-sm text-right" id="inv-total"></td></tr>
                                     
                                     {{-- BARIS KHUSUS DP & SISA --}}
@@ -332,7 +335,7 @@
                                         <td class="py-1 text-gray-800 font-bold italic">SISA TAGIHAN</td>
                                         <td class="py-1 text-right text-gray-800 font-bold italic" id="inv-sisa-amount"></td>
                                     </tr>
-
+    
                                     {{-- BARIS STATUS DEFAULT --}}
                                     <tr id="inv-status-row">
                                         <td class="py-1 font-bold text-green-600 uppercase" id="inv-status"></td>
@@ -367,8 +370,6 @@
                     </div>
                 </div>
             </div>
-        </form>
-    </div>
 
     @include('components.member-modal')
 
@@ -657,6 +658,7 @@
         }
 
         // Fungsi Terapkan Reward
+        // Fungsi Terapkan Reward
         window.applyReward = function() {
             let qtyDiskon = document.getElementById('check_diskon').checked ? (parseInt(document.getElementById('modal_qty_diskon').value) || 0) : 0;
             let qtyParfum = document.getElementById('check_parfum').checked ? (parseInt(document.getElementById('modal_qty_parfum').value) || 0) : 0;
@@ -674,7 +676,9 @@
             if (qtyParfum > 0) claimTexts.push(`${qtyParfum}x Parfum`);
             let claimString = claimTexts.join(' & ');
 
-            $('#input_claim_type').val(claimString);
+            // INI PENTING: Menyimpan qty ke input hidden form agar tersimpan di Database
+            $('#input_claim_diskon_qty').val(qtyDiskon);
+            $('#input_claim_parfum_qty').val(qtyParfum);
             $('#input_discount_amount').val(totalDiscount);
             
             $('#reward-badge').text('Reward: ' + claimString).removeClass('hidden');
@@ -699,51 +703,101 @@
             });
         }
 
-        function populateInvoice(data) {
-            let order = data.order; let cust = order.customer;
+function populateInvoice(data) {
+            let order = data.order; 
+            let cust = order.customer || {};
+            
             $('#inv-cs-masuk').text(order.kasir || '-'); 
             $('#inv-cs-keluar').text(order.kasir_keluar || '-');
-            $('#inv-cust-name').text(cust.nama || 'Guest');
-            $('#inv-cust-hp').text(cust.no_hp || '-');
+            $('#inv-cust-name').text(cust.nama || order.nama_customer || 'Guest');
+            $('#inv-cust-hp').text(cust.no_hp || order.no_hp || '-');
             $('#inv-no').text(order.no_invoice);
+            
             let date = new Date(order.created_at);
             let dateStr = date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
             $('#inv-date').text(dateStr);
 
             let rows = '';
-            order.details.forEach((item, index) => {
+            
+            // GROUPING LOGIC ITEM AGAR RAPI (TIDAK DOUBLE)
+            let groupedItems = {};
+            if(order.details) {
+                order.details.forEach(item => {
+                    let key = item.nama_barang.trim().toLowerCase();
+                    if (!groupedItems[key]) {
+                        groupedItems[key] = {
+                            nama_barang: item.nama_barang,
+                            layanan: [],
+                            catatan: [],
+                            estimasi_keluar: item.estimasi_keluar,
+                            harga: 0
+                        };
+                    }
+                    groupedItems[key].layanan.push(item.layanan);
+                    if (item.catatan && item.catatan !== '-' && item.catatan.trim() !== '') {
+                        groupedItems[key].catatan.push(item.catatan);
+                    }
+                    groupedItems[key].harga += parseInt(item.harga);
+                    if (item.estimasi_keluar && (!groupedItems[key].estimasi_keluar || item.estimasi_keluar > groupedItems[key].estimasi_keluar)) {
+                        groupedItems[key].estimasi_keluar = item.estimasi_keluar;
+                    }
+                });
+            }
+
+            Object.values(groupedItems).forEach(group => {
                 let estStr = '-';
-                if(item.estimasi_keluar) {
-                    let estDate = new Date(item.estimasi_keluar);
+                if(group.estimasi_keluar) {
+                    let estDate = new Date(group.estimasi_keluar);
                     estStr = estDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
                 }
+                
+                let layananStr = group.layanan.join(' + ');
+                let catatanStr = group.catatan.length > 0 ? group.catatan.join(', ') : '-';
 
-                let showInfo = true;
-                if (index > 0) {
-                    let prev = order.details[index - 1];
-                    if (prev.nama_barang === item.nama_barang && 
-                        (prev.catatan || '') === (item.catatan || '') && 
-                        prev.estimasi_keluar === item.estimasi_keluar) {
-                        showInfo = false;
-                    }
-                }
-
-                rows += `
-                    <tr class="align-top">
-                        <td class="py-2 font-bold pr-2">${showInfo ? item.nama_barang : ''}</td>
-                        <td class="py-2 pr-2 text-gray-600 italic">${showInfo ? (item.catatan || '-') : ''}</td>
-                        <td class="py-2 pr-2">${item.layanan}</td>
-                        <td class="py-2 text-center whitespace-nowrap">${showInfo ? estStr : ''}</td>
-                        <td class="py-2 text-right font-bold">${rupiahFormatter.format(item.harga)}</td>
-                    </tr>
-                `;
+                rows += `<tr>
+                    <td class="align-top border-b border-gray-100 py-1 pr-1"><span class="font-bold">${group.nama_barang}</span></td>
+                    <td class="align-top border-b border-gray-100 py-1 text-[10px]">${catatanStr}</td>
+                    <td class="align-top border-b border-gray-100 py-1 text-[10px]">${layananStr}</td>
+                    <td class="align-top border-b border-gray-100 py-1 text-center text-[10px]">${estStr}</td>
+                    <td class="align-top border-b border-gray-100 py-1 text-right">${rupiahFormatter.format(group.harga)}</td>
+                </tr>`;
             });
+            
+            // LOGIKA PARFUM DINAMIS
+            let claimType = order.klaim || data.claim_type;
+            if (claimType && claimType.toLowerCase().includes('parfum')) {
+                let match = claimType.match(/(\d+)\s*x\s*parfum/i);
+                let qtyParfum = match ? match[1] : 1;
+                rows += `<tr>
+                    <td class="align-top border-b border-gray-100 py-1 pr-1"><span class="font-bold">${qtyParfum}x Free Parfum</span></td>
+                    <td class="align-top border-b border-gray-100 py-1 text-[10px]">Klaim Reward</td>
+                    <td class="align-top border-b border-gray-100 py-1 text-[10px]">-</td>
+                    <td class="align-top border-b border-gray-100 py-1 text-center text-[10px]">-</td>
+                    <td class="align-top border-b border-gray-100 py-1 text-right">0</td>
+                </tr>`;
+            }
+
             $('#inv-items-body').html(rows);
-            $('#inv-subtotal').text(rupiahFormatter.format(data.original_total));
-            $('#inv-discount').text('- ' + rupiahFormatter.format(data.discount_amount));
+            $('#inv-subtotal').text(rupiahFormatter.format(data.original_total || order.total_harga));
+            
+            // LOGIKA DISKON DINAMIS
+            let discountAmount = data.discount_amount || 0;
+            if (discountAmount > 0) {
+                let qtyDiskon = 1;
+                if (claimType) {
+                    let matchDiskon = claimType.match(/(\d+)\s*x\s*diskon/i);
+                    if (matchDiskon) qtyDiskon = matchDiskon[1];
+                }
+                $('#inv-discount-label').text(qtyDiskon + 'x Diskon Reward');
+                $('#inv-discount').text('- ' + rupiahFormatter.format(discountAmount));
+                $('#inv-discount-row').removeClass('hidden');
+            } else {
+                $('#inv-discount-row').addClass('hidden');
+            }
+
             $('#inv-total').text(rupiahFormatter.format(order.total_harga));
 
-            // --- LOGIKA MENAMPILKAN DP DI NOTA ---
+            // LOGIKA DP & SISA TAGIHAN
             if (order.status_pembayaran === 'DP') {
                 $('#inv-dp-amount').text('Rp ' + rupiahFormatter.format(order.paid_amount));
                 $('#inv-sisa-amount').text('Rp ' + rupiahFormatter.format(order.total_harga - order.paid_amount));
@@ -751,12 +805,10 @@
                 
                 $('#inv-dp-row').removeClass('hidden');
                 $('#inv-sisa-row').removeClass('hidden');
-                
                 $('#inv-status-row').addClass('hidden');
             } else {
                 $('#inv-dp-row').addClass('hidden');
                 $('#inv-sisa-row').addClass('hidden');
-                
                 $('#inv-status-row').removeClass('hidden');
                 $('#inv-status').text(order.status_pembayaran ? order.status_pembayaran.toUpperCase() : '-')
                                 .removeClass('text-gray-800').addClass('text-green-600');
@@ -764,10 +816,13 @@
                                 .removeClass('text-gray-800').addClass('text-green-600');
             }
 
+            // TEKS PESAN KLAIM REWARD DI BAWAH T&C
             let msgDiv = $('#inv-claim-msg');
-            if (data.claim_type === 'Diskon') { msgDiv.text('*** DISKON POIN DIGUNAKAN ***').removeClass('hidden'); }
-            else if (data.claim_type === 'Parfum') { msgDiv.text('*** FREE PARFUM CLAIMED ***').removeClass('hidden'); }
-            else { msgDiv.addClass('hidden'); } 
+            if (claimType) { 
+                msgDiv.text('*** REWARD: ' + claimType.toUpperCase() + ' ***').removeClass('hidden'); 
+            } else { 
+                msgDiv.addClass('hidden'); 
+            }
         }
 
         window.printInvoice = function() {

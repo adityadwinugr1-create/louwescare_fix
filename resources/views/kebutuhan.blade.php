@@ -49,11 +49,11 @@
                         <div class="w-1/2 md:w-auto md:col-span-2">
                             <label class="block md:hidden text-[10px] font-bold text-gray-500 uppercase mb-1">Stok</label>
                             <div class="bg-white border border-gray-200 rounded-xl p-2 px-3 flex items-center transition-colors h-[46px]" :class="{'bg-gray-100': row.saved}">
-                                <input type="number" 
-                                       x-model="row.stok"
-                                       :disabled="row.saved"
-                                       placeholder="0" 
-                                       class="w-full bg-transparent border-none p-0 text-gray-700 font-bold focus:ring-0 text-center disabled:text-gray-500">
+                                <input type="text" 
+                                    x-model="row.stok"
+                                    :disabled="row.saved"
+                                    placeholder="Contoh: 5 pcs" 
+                                    class="w-full bg-transparent border-none p-0 text-gray-700 font-bold focus:ring-0 text-center disabled:text-gray-500">
                             </div>
                         </div>
                     </div>
