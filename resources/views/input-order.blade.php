@@ -282,104 +282,110 @@
                 </div>
             </div>
 
-{{-- 4. MODAL INVOICE POPUP (SINKRON DENGAN MANAJEMEN PESANAN) --}}
-            <div id="modal-invoice" class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900 bg-opacity-90" style="display: none;">
-                <div class="bg-white p-0 rounded-lg shadow-2xl overflow-hidden max-w-2xl w-full mx-4 relative flex flex-col max-h-[90vh]">
-                    <div id="invoice-content" class="bg-white p-6 invoice-area text-xs leading-snug text-black overflow-y-auto">
+{{-- MODAL INVOICE POPUP --}}
+        <div id="modal-invoice" class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900 bg-opacity-90" style="display: none;">
+            <div class="bg-white rounded-lg shadow-2xl max-w-2xl w-full mx-4 relative flex flex-col max-h-[90vh]">
+                <div id="invoice-content" class="bg-white p-6 invoice-area text-xs leading-snug text-black overflow-y-auto">
+                    <div class="text-center mb-2">
                         <div class="text-center mb-2">
-                            <div class="flex justify-center mb-2"><div class="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center font-bold text-xl">LC</div></div>
-                            <h2 class="text-xl font-bold tracking-widest uppercase mb-1">LOUWES CARE</h2>
-                            <p class="font-bold text-[10px] text-gray-600 uppercase tracking-wide">SHOE LAUNDRY & CARE</p>
-                            <p class="text-[9px] mt-1 text-gray-500">Jl. Ringroad Timur No 9, Plumbon, Banguntapan, Bantul, DIY 55196</p>
-                            <p class="text-[9px] text-gray-500">Instagram: @Louwes Shoes Care | WA: 081390154885</p>
+    <div class="flex justify-center mb-2">
+        <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
+            <img src="{{ asset('assets/icons/logolouwes.png') }}" 
+                 alt="Logo" 
+                 style="width: 120px; height: auto; display: block; margin: 0 auto;">
+        </div>
+    </div>
+    <h2 class="text-xl font-bold tracking-widest uppercase mb-1">LOUWES CARE</h2>
+    <p class="font-bold text-[10px] text-gray-600 uppercase tracking-wide">Clean - Fresh - Better</p>
+    </div>
+                        <p class="text-[9px] mt-1 text-gray-500">Jl. Ringroad Timur No 9, Plumbon, Banguntapan, Bantul, DIY 55196</p>
+                        <p class="text-[9px] text-gray-500">Instagram: @Louwes Shoes Care | WA: 081390154885</p>
+                    </div>
+                    <div class="thick-line mb-3"></div>
+                    <div class="flex justify-between items-end mb-4">
+                        <div class="text-sm font-bold">CS Masuk: <span id="inv-cs-masuk" class="font-normal"></span><br>CS Keluar: <span id="inv-cs-keluar" class="font-normal"></span></div>
+                        <div class="text-2xl font-bold tracking-widest">INVOICE</div>
+                    </div>
+                    <div class="border-b border-black mb-2"></div>
+                    <div class="flex justify-between items-start mb-4 text-[11px]">
+                        <div class="w-1/2">
+                            <div class="font-bold mb-1">CUSTOMER:</div>
+                            <div id="inv-cust-name" class="uppercase font-bold text-sm"></div>
+                            <div id="inv-cust-hp"></div>
                         </div>
-                        <div class="thick-line mb-3"></div>
-                        <div class="flex justify-between items-end mb-4">
-                            <div class="text-sm font-bold">
-                                CS Masuk: <span id="inv-cs-masuk" class="font-normal"></span><br>
-                                CS Keluar: <span id="inv-cs-keluar" class="font-normal"></span>
-                            </div>
-                            <div class="text-2xl font-bold tracking-widest">INVOICE</div>
+                        <div class="w-1/2 text-right">
+                            <div class="font-bold mb-1">DETAILS:</div>
+                            <div>No: <span id="inv-no" class="font-bold"></span></div>
+                            <div>Date: <span id="inv-date"></span></div>
                         </div>
-                        <div class="border-b border-black mb-2"></div>
-                        <div class="flex justify-between items-start mb-4 text-[11px]">
-                            <div class="w-1/2">
-                                <div class="font-bold mb-1">CUSTOMER:</div>
-                                <div id="inv-cust-name" class="uppercase font-bold text-sm"></div>
-                                <div id="inv-cust-hp"></div>
-                            </div>
-                            <div class="w-1/2 text-right">
-                                <div class="font-bold mb-1">DETAILS:</div>
-                                <div>No: <span id="inv-no" class="font-bold"></span></div>
-                                <div>Date: <span id="inv-date"></span></div>
-                            </div>
-                        </div>
-                        <div class="mb-4">
-                            <table class="w-full text-left text-[10px]">
-                                <thead>
-                                    <tr class="dashed-line text-gray-600 uppercase">
-                                        <th class="py-2 w-3/12">ITEM</th>
-                                        <th class="py-2 w-2/12">CATATAN</th>
-                                        <th class="py-2 w-3/12">TREATMENT</th>
-                                        <th class="py-2 w-2/12 text-center">KELUAR</th>
-                                        <th class="py-2 w-2/12 text-right">HARGA</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="inv-items-body" class="dashed-line"></tbody>
+                    </div>
+                    <div class="mb-4">
+                        <table class="w-full text-left text-[10px]">
+                            <thead>
+                                <tr class="dashed-line text-gray-600 uppercase">
+                                    <th class="py-2 w-1/12 font-bold">ITEM & CATATAN</th>
+                                    <th class="py-2 w-3/12 font-bold">TREATMENT</th>
+                                    <th class="py-2 w-2/12 text-center font-bold">EST JADI</th>
+                                    <th class="py-2 w-2/12 text-right font-bold">HARGA</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inv-items-body" class="dashed-line"></tbody>
+                        </table>
+                    </div>
+                    <div class="flex justify-end mb-6">
+                        <div class="w-full">
+                            <table class="w-full text-[11px]">
+                                <tr>
+                                    <td class="py-1 text-right pr-2 text-gray-600">Subtotal :</td>
+                                    <td class="py-1 text-right" id="inv-subtotal"></td>
+                                </tr>
+                                <tr class="dashed-line" id="inv-discount-row">
+                                    <td class="py-1 text-right pr-2 text-gray-600" id="inv-discount-label">Diskon :</td>
+                                    <td class="py-1 text-right" id="inv-discount"></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-sm text-right pr-2 font-bold">TOTAL :</td>
+                                    <td class="py-2 text-sm text-right font-bold" id="inv-total"></td>
+                                </tr>
+                                <tr id="inv-dp-row" class="hidden">
+                                    <td class="py-1 text-right pr-2 text-gray-600 font-bold">DP Dibayar <span id="inv-dp-method" class="font-normal italic text-[9px]"></span> :</td>
+                                    <td class="py-1 text-right font-bold" id="inv-dp-amount"></td>
+                                </tr>
+                                <tr id="inv-sisa-row" class="dashed-line hidden">
+                                    <td class="py-1 text-right pr-2 text-gray-800 font-bold italic">SISA TAGIHAN :</td>
+                                    <td class="py-1 text-right text-gray-800 font-bold italic" id="inv-sisa-amount"></td>
+                                </tr>
+                                <tr id="inv-status-row">
+                                    <td class="py-1 uppercase text-right pr-2 font-bold" id="inv-status"></td>
+                                    <td class="py-1 text-right text-[10px]" id="inv-method"></td>
+                                </tr>
                             </table>
                         </div>
-                        
-                        <div class="flex justify-end mb-6">
-                            <div class="w-full sm:w-1/2">
-                                <table class="w-full text-[11px]">
-                                    <tr><td class="py-1 text-gray-600">Subtotal</td><td class="py-1 text-right" id="inv-subtotal"></td></tr>
-                                    <tr class="dashed-line" id="inv-discount-row"><td class="py-1 text-gray-600" id="inv-discount-label">Diskon</td><td class="py-1 text-right" id="inv-discount"></td></tr>
-                                    <tr><td class="py-2 font-bold text-sm">TOTAL</td><td class="py-2 font-bold text-sm text-right" id="inv-total"></td></tr>
-                                    
-                                    {{-- BARIS KHUSUS DP & SISA --}}
-                                    <tr id="inv-dp-row" class="hidden">
-                                        <td class="py-1 text-gray-600 font-bold">DP Dibayar <span id="inv-dp-method" class="font-normal italic text-[9px]"></span></td>
-                                        <td class="py-1 text-right font-bold" id="inv-dp-amount"></td>
-                                    </tr>
-                                    <tr id="inv-sisa-row" class="dashed-line hidden">
-                                        <td class="py-1 text-gray-800 font-bold italic">SISA TAGIHAN</td>
-                                        <td class="py-1 text-right text-gray-800 font-bold italic" id="inv-sisa-amount"></td>
-                                    </tr>
-    
-                                    {{-- BARIS STATUS DEFAULT --}}
-                                    <tr id="inv-status-row">
-                                        <td class="py-1 font-bold text-green-600 uppercase" id="inv-status"></td>
-                                        <td class="py-1 text-right text-green-600 text-[10px]" id="inv-method"></td>
-                                    </tr>
-                                </table>
-                            </div>
-                        </div>
-                        
-                        <div class="dashed-line mb-3"></div>
-                        <div class="flex justify-between items-start gap-4 text-[9px] text-gray-700">
-                            <div class="w-1/2">
-                                <p class="font-bold mb-1">"Jika sudah tanggal deadline tetapi belum kami hubungi, mohon WA kami"</p>
-                                <p class="italic">*Simpan nota ini sebagai bukti pengambilan</p>
-                                <div id="inv-claim-msg" class="mt-2 font-bold border border-black p-1 text-center hidden"></div>
-                            </div>
-                            <div class="w-1/2">
-                                <p class="font-bold underline mb-1">NB (Syarat & Ketentuan):</p>
-                                <ul class="list-disc pl-3 leading-tight space-y-0.5">
-                                    <li>Barang rusak karena bahan sudah rapuh bukan tanggungjawab kami.</li>
-                                    <li>Apabila barang tidak diambil lebih dari 3 Bulan setelah jadi , hilang bukan tanggung jawab kami.</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="text-center mt-6 text-[10px] text-gray-500">-- Terima Kasih --</div>
                     </div>
-                    <div class="bg-gray-100 p-4 flex gap-2 no-print border-t shrink-0">
-                        <button type="button" onclick="window.printInvoice()" class="flex-1 bg-gray-800 text-white py-2 rounded font-bold hover:bg-black">Cetak</button>
-                        <button type="button" onclick="window.location.href = '{{ route('pesanan.index') }}'" class="flex-1 bg-red-100 text-red-600 py-2 rounded font-bold">Tutup</button>
+                    <div class="dashed-line mb-3"></div>
+                    <div class="flex justify-between items-start gap-4 text-[9px] text-gray-700">
+                        <div class="w-1/2">
+                            <p class="font-bold mb-1">"Jika sudah tanggal deadline tetapi belum kami hubungi, mohon WA kami"</p>
+                            <p class="italic">*Simpan nota ini sebagai bukti pengambilan</p>
+                            <div id="inv-claim-msg" class="mt-2 font-bold border border-black p-1 text-center hidden"></div>
+                        </div>
+                        <div class="w-1/2">
+                            <p class="font-bold underline mb-1">NB (Syarat & Ketentuan):</p>
+                            <ul class="list-disc pl-3 leading-tight space-y-0.5">
+                                <li>Barang rusak karena bahan sudah rapuh bukan tanggungjawab kami.</li>
+                                <li>Apabila barang tidak diambil lebih dari 3 Bulan setelah jadi , hilang bukan tanggung jawab kami.</li>
+                            </ul>
+                        </div>
                     </div>
+                    <div class="text-center mt-6 text-[10px] text-gray-500">-- Terima Kasih --</div>
+                </div>
+                <div class="bg-gray-100 p-4 flex gap-2 no-print border-t">
+                    <button type="button" onclick="window.printInvoice()" class="flex-1 bg-gray-800 text-white py-2 rounded font-bold hover:bg-black">Cetak</button>
+                    <button type="button" onclick="window.location.href = '{{ route('pesanan.index') }}'" class="flex-1 bg-red-100 text-red-600 py-2 rounded font-bold">Tutup</button>
                 </div>
             </div>
-
-    @include('components.member-modal')
+        </div>
+    </div>
 
 {{-- MODAL CLAIM --}}
 <div id="modal-claim-reward" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-60 hidden" onclick="window.closeClaimModal()">
@@ -754,73 +760,48 @@ window.submitOrder = function() {
 }
 
 function populateInvoice(data) {
-            let order = data.order; 
-            let cust = order.customer || {};
-            
-            $('#inv-cs-masuk').text(order.kasir || '-'); 
-            $('#inv-cs-keluar').text(order.kasir_keluar || '-');
-            $('#inv-cust-name').text(cust.nama || order.nama_customer || 'Guest');
-            $('#inv-cust-hp').text(cust.no_hp || order.no_hp || '-');
+            let order = data.order; let originalTotal = data.original_total; let discountAmount = data.discount_amount; let claimType = data.claim_type;
+
+            $('#inv-cs-masuk').text(order.kasir || '-'); $('#inv-cs-keluar').text(order.kasir_keluar || '-');
+            $('#inv-cust-name').text(order.customer.nama); $('#inv-cust-hp').text(order.customer.no_hp);
             $('#inv-no').text(order.no_invoice);
-            
-            let date = new Date(order.created_at);
-            let dateStr = date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            $('#inv-date').text(dateStr);
+            $('#inv-date').text(new Date(order.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }));
 
             let rows = '';
-            
-            // GROUPING LOGIC ITEM AGAR RAPI (TIDAK DOUBLE)
             let groupedItems = {};
-            if(order.details) {
-                order.details.forEach(item => {
-                    let key = item.nama_barang.trim().toLowerCase();
-                    if (!groupedItems[key]) {
-                        groupedItems[key] = {
-                            nama_barang: item.nama_barang,
-                            layanan: [],
-                            catatan: [],
-                            estimasi_keluar: item.estimasi_keluar,
-                            harga: 0
-                        };
-                    }
-                    groupedItems[key].layanan.push(item.layanan);
-                    if (item.catatan && item.catatan !== '-' && item.catatan.trim() !== '') {
-                        groupedItems[key].catatan.push(item.catatan);
-                    }
-                    groupedItems[key].harga += parseInt(item.harga);
-                    if (item.estimasi_keluar && (!groupedItems[key].estimasi_keluar || item.estimasi_keluar > groupedItems[key].estimasi_keluar)) {
-                        groupedItems[key].estimasi_keluar = item.estimasi_keluar;
-                    }
-                });
-            }
+            order.details.forEach(item => {
+                let key = item.nama_barang.trim().toLowerCase();
+                if (!groupedItems[key]) { groupedItems[key] = { nama_barang: item.nama_barang, layanan: [], catatan: [], estimasi_keluar: item.estimasi_keluar, harga: 0 }; }
+                groupedItems[key].layanan.push(item.layanan);
+                if (item.catatan && item.catatan !== '-' && item.catatan.trim() !== '') groupedItems[key].catatan.push(item.catatan);
+                groupedItems[key].harga += parseInt(item.harga);
+                if (item.estimasi_keluar && (!groupedItems[key].estimasi_keluar || item.estimasi_keluar > groupedItems[key].estimasi_keluar)) groupedItems[key].estimasi_keluar = item.estimasi_keluar;
+            });
 
             Object.values(groupedItems).forEach(group => {
-                let estStr = '-';
-                if(group.estimasi_keluar) {
-                    let estDate = new Date(group.estimasi_keluar);
-                    estStr = estDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                }
+                let estStr = group.estimasi_keluar ? new Date(group.estimasi_keluar).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+                let catatanStr = group.catatan.length > 0 ? group.catatan.join(', ') : '';
                 
-                let layananStr = group.layanan.join(' + ');
-                let catatanStr = group.catatan.length > 0 ? group.catatan.join(', ') : '-';
+                // Jika ada catatan, tambahkan di bawah nama item dengan font lebih kecil (9px)
+                let itemContent = `<span>${group.nama_barang}</span>`;
+                if (catatanStr && catatanStr !== '-') {
+                    itemContent += `<br><span style="font-size: 9px;">Catatan: ${catatanStr}</span>`;
+                }
 
                 rows += `<tr>
-                    <td class="align-top border-b border-gray-100 py-1 pr-1"><span class="font-bold">${group.nama_barang}</span></td>
-                    <td class="align-top border-b border-gray-100 py-1 text-[10px]">${catatanStr}</td>
-                    <td class="align-top border-b border-gray-100 py-1 text-[10px]">${layananStr}</td>
+                    <td class="align-top border-b border-gray-100 py-1 pr-1">${itemContent}</td>
+                    <td class="align-top border-b border-gray-100 py-1 text-[10px]">${group.layanan.join(' + ')}</td>
                     <td class="align-top border-b border-gray-100 py-1 text-center text-[10px]">${estStr}</td>
                     <td class="align-top border-b border-gray-100 py-1 text-right">${rupiahFormatter.format(group.harga)}</td>
                 </tr>`;
             });
             
-            // LOGIKA PARFUM DINAMIS
-            let claimType = order.klaim || data.claim_type;
+            // Sesuaikan juga kolom parfum agar jumlah td-nya sama (4 kolom)
             if (claimType && claimType.toLowerCase().includes('parfum')) {
                 let match = claimType.match(/(\d+)\s*x\s*parfum/i);
                 let qtyParfum = match ? match[1] : 1;
                 rows += `<tr>
-                    <td class="align-top border-b border-gray-100 py-1 pr-1"><span class="font-bold">${qtyParfum}x Free Parfum</span></td>
-                    <td class="align-top border-b border-gray-100 py-1 text-[10px]">Klaim Reward</td>
+                    <td class="align-top border-b border-gray-100 py-1 pr-1"><span>${qtyParfum}x Free Parfum</span></td>
                     <td class="align-top border-b border-gray-100 py-1 text-[10px]">-</td>
                     <td class="align-top border-b border-gray-100 py-1 text-center text-[10px]">-</td>
                     <td class="align-top border-b border-gray-100 py-1 text-right">0</td>
@@ -828,86 +809,113 @@ function populateInvoice(data) {
             }
 
             $('#inv-items-body').html(rows);
-            $('#inv-subtotal').text(rupiahFormatter.format(data.original_total || order.total_harga));
-            
-            // LOGIKA DISKON DINAMIS
-            let discountAmount = data.discount_amount || 0;
+            $('#inv-subtotal').text(rupiahFormatter.format(originalTotal));
+
             if (discountAmount > 0) {
                 let qtyDiskon = 1;
-                if (claimType) {
-                    let matchDiskon = claimType.match(/(\d+)\s*x\s*diskon/i);
-                    if (matchDiskon) qtyDiskon = matchDiskon[1];
-                }
-                $('#inv-discount-label').text(qtyDiskon + 'x Diskon Reward');
+                if (claimType) { let matchDiskon = claimType.match(/(\d+)\s*x\s*diskon/i); if (matchDiskon) qtyDiskon = matchDiskon[1]; }
+                $('#inv-discount-label').text(qtyDiskon + 'x Diskon :');
                 $('#inv-discount').text('- ' + rupiahFormatter.format(discountAmount));
                 $('#inv-discount-row').removeClass('hidden');
-            } else {
-                $('#inv-discount-row').addClass('hidden');
-            }
+            } else { $('#inv-discount-row').addClass('hidden'); }
 
             $('#inv-total').text(rupiahFormatter.format(order.total_harga));
-
-            // LOGIKA DP & SISA TAGIHAN
+            
             if (order.status_pembayaran === 'DP') {
                 $('#inv-dp-amount').text('Rp ' + rupiahFormatter.format(order.paid_amount));
                 $('#inv-sisa-amount').text('Rp ' + rupiahFormatter.format(order.total_harga - order.paid_amount));
                 $('#inv-dp-method').text('(via ' + (order.metode_pembayaran || '-') + ')');
-                
-                $('#inv-dp-row').removeClass('hidden');
-                $('#inv-sisa-row').removeClass('hidden');
-                $('#inv-status-row').addClass('hidden');
+                $('#inv-dp-row').removeClass('hidden'); $('#inv-sisa-row').removeClass('hidden'); $('#inv-status-row').addClass('hidden');
             } else {
-                $('#inv-dp-row').addClass('hidden');
-                $('#inv-sisa-row').addClass('hidden');
-                $('#inv-status-row').removeClass('hidden');
-                $('#inv-status').text(order.status_pembayaran ? order.status_pembayaran.toUpperCase() : '-')
-                                .removeClass('text-gray-800').addClass('text-green-600');
-                $('#inv-method').text(order.metode_pembayaran ? 'via ' + order.metode_pembayaran : '')
-                                .removeClass('text-gray-800').addClass('text-green-600');
+                $('#inv-dp-row').addClass('hidden'); $('#inv-sisa-row').addClass('hidden'); $('#inv-status-row').removeClass('hidden');
+                $('#inv-status').text(order.status_pembayaran ? order.status_pembayaran.toUpperCase() : '-').removeClass('text-gray-800').addClass('text-green-600');
+                $('#inv-method').text(order.metode_pembayaran ? 'via ' + order.metode_pembayaran : '').removeClass('text-gray-800').addClass('text-green-600');
             }
 
-            // TEKS PESAN KLAIM REWARD DI BAWAH T&C
             let msgDiv = $('#inv-claim-msg');
-            if (claimType) { 
-                msgDiv.text('*** REWARD: ' + claimType.toUpperCase() + ' ***').removeClass('hidden'); 
-            } else { 
-                msgDiv.addClass('hidden'); 
-            }
+            if (claimType) { msgDiv.text('*** REWARD: ' + claimType.toUpperCase() + ' ***').removeClass('hidden'); } else { msgDiv.addClass('hidden'); }
         }
 
+        // 3. FUNGSI DOWNLOAD PDF 80MM
         window.printInvoice = function() {
-            var invoiceNo = $('#inv-no').text() || 'Invoice';
+            var invNo = $('#inv-no').text().trim() || 'Invoice'; 
             var content = document.getElementById('invoice-content').innerHTML;
             
-            // Simpan judul asli dan ubah judul dokumen agar nama file PDF sesuai nomor invoice
-            // Browser modern (Chrome/Edge) mengambil nama file dari title Tab/Window utama
-            document.title = invoiceNo;
-            
-            // Gunakan iframe agar tidak membuka tab baru dan lebih stabil di HP/Tablet
             var iframeId = 'invoice-print-frame';
             var iframe = document.getElementById(iframeId);
             if (iframe) { document.body.removeChild(iframe); }
             
             iframe = document.createElement('iframe');
             iframe.id = iframeId;
-            iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0;';
+            iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
             document.body.appendChild(iframe);
             
             var doc = iframe.contentWindow.document;
             doc.open();
-            doc.write('<html><head><title>' + invoiceNo + '</title>');
-            doc.write('<style>body{font-family:"Helvetica","Arial",sans-serif;font-size:12px;margin:0;padding:10px;color:#000}.text-center{text-align:center}.text-right{text-align:right}.font-bold{font-weight:700}.uppercase{text-transform:uppercase}.italic{font-style:italic}.hidden{display:none}table{width:100%;border-collapse:collapse;margin-bottom:5px}td,th{vertical-align:top;padding:2px 0}.w-4\\/12{width:35%}.w-3\\/12{width:25%}.w-2\\/12{width:15%}.text-\\[10px\\]{font-size:10px}.text-\\[9px\\]{font-size:9px}.dashed-line{border-bottom:1px dashed #000}.thick-line{border-bottom:2px solid #000}.border-b{border-bottom:1px solid #000}ul{padding-left:15px;margin:5px 0}.flex{display:flex;justify-content:space-between;align-items:flex-end}</style>');
-            doc.write('</head><body>' + content + '</body></html>');
+            doc.write('<html><head><title>' + invNo + '</title>');
+            doc.write('<style>');
+
+
+            // Tambahkan baris-baris ini di dalam bagian style doc.write Anda
+            doc.write('.flex { display: flex; justify-content: center; align-items: center; width: 100%; }');
+            doc.write('.justify-center { justify-content: center; }');
+            doc.write('.text-center { text-align: center; }');
+
+            // Memastikan gambar berada di tengah dan ukurannya proporsional
+            doc.write('img { display: block; margin: 0 auto; max-width: 60mm; height: auto; }');
+
+            // Memaksa kolom Item dan Treatment untuk mepet ke kiri (0 padding)
+doc.write('th, td { vertical-align: top; padding-top: 4px; padding-bottom: 4px; }');
+doc.write('th:nth-child(1), td:nth-child(1), th:nth-child(2), td:nth-child(2) { text-align: left; padding-left: 0 !important; }');
+
+// Perataan untuk kolom lainnya
+doc.write('th.text-center, td.text-center { text-align: center; }');
+doc.write('th.text-right, td.text-right { text-align: right; }');
+
+// Memastikan lebar kolom tetap konsisten
+doc.write('.w-5\\/12 { width: 41.66%; }');
+doc.write('.w-3\\/12 { width: 25%; }');
+            
+            // 1. KUNCI UTAMA: Hilangkan batasan tinggi dan overflow agar menyambung
+            doc.write('html, body { margin: 0 !important; padding: 0 !important; height: auto !important; min-height: 0 !important; overflow: visible !important; font-family:"Helvetica","Arial",sans-serif; font-size:12px; color:#000; }');
+            
+            doc.write('table { width: 100%; border-collapse: collapse; table-layout: fixed; }');
+            doc.write('td, th { word-wrap: break-word; overflow-wrap: break-word; vertical-align: top; }');
+            
+            // Konversi layout Tailwind Anda
+            doc.write('.w-1\\/2{width:50%;} .w-5\\/12{width:41.66%;} .w-3\\/12{width:25%;} .w-2\\/12{width:16.66%;} .w-full{width:100%;}');
+            doc.write('.text-center{text-align:center;} .text-right{text-align:right;} .pr-2{padding-right:8px;}');
+            doc.write('.dashed-line{border-bottom:1px dashed #000;} .thick-line{border-bottom:2px solid #000;} .border-b{border-bottom:1px solid #000;}');
+            
+            // Pertahankan style sebelumnya (Bold, Ukuran, dll)
+            doc.write('.font-bold{font-weight:bold;} .font-normal{font-weight:normal;} .italic{font-style:italic;} .uppercase{text-transform:uppercase;}');
+            doc.write('.text-xl{font-size:20px;} .text-2xl{font-size:24px;} .text-sm{font-size:14px;} .text-\\[10px\\]{font-size:10px;} .text-\\[9px\\]{font-size:9px;} .text-\\[11px\\]{font-size:11px;}');
+            doc.write('.mb-1{margin-bottom:4px;} .mb-2{margin-bottom:8px;} .mb-3{margin-bottom:12px;} .mb-4{margin-bottom:16px;} .mb-6{margin-bottom:24px;} .mt-1{margin-top:4px;} .mt-2{margin-top:8px;} .mt-6{margin-top:24px;}');
+            doc.write('.hidden{display:none;} .flex{display:flex;justify-content:space-between;align-items:flex-start;}');
+            doc.write('ul{padding-left:15px;margin:5px 0;}');
+
+            // 2. ANTI-POTONG: Mencegah garis double dan pemotongan halaman
+            doc.write('@media print {');
+            doc.write('  @page { size: 80mm auto; margin: 0; }'); // 'auto' memungkinkan kertas memanjang sesuai isi
+            doc.write('  thead { display: table-row-group; }'); // Mencegah judul kolom berulang (garis double)
+            doc.write('  table, tr, td, th, p, div { page-break-inside: avoid !important; break-inside: avoid !important; }'); // Anti-potong
+            doc.write('}');
+            
+            doc.write('</style></head><body>');
+            doc.write(content);
+            doc.write('</body></html>');
             doc.close();
             
-            // Paksa set title dokumen iframe juga (untuk browser yang baca title iframe)
-            doc.title = invoiceNo;
-
-            setTimeout(function() { 
-                iframe.contentWindow.focus();
+            iframe.contentWindow.focus();
+            setTimeout(function() {
                 iframe.contentWindow.print();
-            }, 500);
+            }, 250);
         }
+
+        function formatRupiahInput(input) { let value = input.value.replace(/[^0-9]/g, ''); if (value) { input.value = new Intl.NumberFormat('id-ID').format(value); } else { input.value = ''; } }
+
+        // Fungsi baru dari permintaan awal untuk Kategori + Layanan + Warna
+        const rawTreatmentsDetail = @json($treatments ?? []);
 
         window.shareWhatsapp = function() {
             let no = $('#inv-no').text(); let total = $('#inv-total').text(); let name = $('#inv-cust-name').text();
