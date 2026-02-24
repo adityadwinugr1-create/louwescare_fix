@@ -181,7 +181,11 @@ class DashboardController extends Controller
         // D. Treatment
         if ($request->filled('treatment')) {
             $query->whereHas('details', function($q) use ($request) {
-                $q->where('layanan', $request->treatment);
+                // Pastikan input berupa array. Jika bukan, jadikan array.
+                $treatments = is_array($request->treatment) ? $request->treatment : [$request->treatment];
+                
+                // Gunakan whereIn untuk memfilter lebih dari satu treatment sekaligus
+                $q->whereIn('layanan', $treatments);
             });
         }
 

@@ -154,7 +154,8 @@
                     <form id="filterForm" action="{{ route('owner.laporan') }}" method="GET" class="p-6 space-y-4">
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {{-- Tanggal Masuk --}}
+                            
+                            {{-- BARIS 1: Tanggal Masuk & Keluar --}}
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal Masuk</label>
                                 <div class="flex gap-2">
@@ -163,7 +164,6 @@
                                 </div>
                             </div>
 
-                            {{-- Tanggal Keluar --}}
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal Keluar</label>
                                 <div class="flex gap-2">
@@ -172,7 +172,17 @@
                                 </div>
                             </div>
 
-                            {{-- Kategori Customer --}}
+                            {{-- BARIS 2: Range Harga (Membentang Penuh 2 Kolom) --}}
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Range Harga (Rp)</label>
+                                <div class="flex gap-2 items-center">
+                                    <input type="number" name="min_harga" placeholder="Min" value="{{ request('min_harga') }}" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500">
+                                    <span class="text-gray-400 font-bold">-</span>
+                                    <input type="number" name="max_harga" placeholder="Max" value="{{ request('max_harga') }}" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500">
+                                </div>
+                            </div>
+
+                            {{-- BARIS 3: Kategori Customer & Treatment --}}
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Kategori Customer</label>
                                 <select name="kategori_customer" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500">
@@ -183,26 +193,29 @@
                                 </select>
                             </div>
 
-                            {{-- Treatment --}}
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Treatment</label>
-                                <select name="treatment" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500">
-                                    <option value="">Semua Treatment</option>
+                                {{-- Box Scrollable untuk Checkbox (Multi-select) --}}
+                                <div class="w-full max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-1 bg-white">
+                                    @php 
+                                        $selectedTreatments = request('treatment', []); 
+                                        if(!is_array($selectedTreatments)) {
+                                            $selectedTreatments = [$selectedTreatments];
+                                        }
+                                    @endphp
+                                    
                                     @foreach($treatments as $t)
-                                        <option value="{{ $t->nama_treatment }}" {{ request('treatment') == $t->nama_treatment ? 'selected' : '' }}>{{ $t->nama_treatment }}</option>
+                                        <label class="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded transition">
+                                            <input type="checkbox" name="treatment[]" value="{{ $t->nama_treatment }}" 
+                                                {{ in_array($t->nama_treatment, $selectedTreatments) ? 'checked' : '' }}
+                                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <span class="text-sm text-gray-700">{{ $t->nama_treatment }}</span>
+                                        </label>
                                     @endforeach
-                                </select>
+                                </div>
+                                    <p class="text-[10px] text-gray-400 mt-1 italic">*Centang beberapa opsi untuk filter ganda</p>
                             </div>
 
-                            {{-- Range Harga --}}
-                            <div class="md:col-span-2">
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Range Harga (Rp)</label>
-                                <div class="flex gap-2 items-center">
-                                    <input type="number" name="min_harga" placeholder="Min" value="{{ request('min_harga') }}" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500">
-                                    <span class="text-gray-400">-</span>
-                                    <input type="number" name="max_harga" placeholder="Max" value="{{ request('max_harga') }}" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500">
-                                </div>
-                            </div>
                         </div>
 
                         {{-- Komplain Checkbox --}}
