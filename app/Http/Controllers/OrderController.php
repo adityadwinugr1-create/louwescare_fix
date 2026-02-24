@@ -502,10 +502,10 @@ class OrderController extends Controller
             }
 
         } elseif ($type == '2') {
-            $order->wa_sent_2 = !$order->wa_sent_2;
+            $order->wa_sent_2 = true;
 
             // Jika status berubah jadi TERKIRIM (True), buat link WA Pengambilan
-            if ($order->wa_sent_2 && $phone) {
+            if ($phone) {
                   $total = number_format($order->total_harga, 0, ',', '.');
                 
                 // Cek Status Kelengkapan Item
