@@ -196,7 +196,24 @@
                                 @endif
                             </td>
                             <td class="border-b py-1 text-[10px]">{{ $layananList }}</td>
-                            <td class="border-b py-1 text-center text-[10px]">{{ $estStr }}</td>
+                            <td class="border-b py-1 text-center text-[10px]">
+                                {{ $estStr }}
+                                
+                                @php
+                                    // Hitung berapa item dalam grup ini yang statusnya sudah 'Diambil'
+                                    $diambilCount = $details->where('status', 'Diambil')->count();
+                                    $totalItem = $details->count();
+                                @endphp
+
+                                @if($diambilCount > 0)
+                                    <br>
+                                    <span class="font-bold text-[12px]">✓</span>
+                                    {{-- Jika item yang sama ada lebih dari 1, dan baru diambil sebagian, tampilkan angkanya (misal: ✓ 1/2) --}}
+                                    @if($totalItem > 1)
+                                        <span class="text-[9px]">({{ $diambilCount }}/{{ $totalItem }})</span>
+                                    @endif
+                                @endif
+                            </td>
                             <td class="border-b py-1 text-right">{{ number_format($groupPrice, 0, ',', '.') }}</td>
                         </tr>
                     @endforeach
@@ -279,8 +296,8 @@
 
         <div class="dashed-line mb-3"></div>
 
-        <div class="flex gap-4 text-[9px] text-gray-700">
-            <div class="w-1/2">
+        <div class="flex flex-col gap-3 text-[9px] text-gray-700">
+            <div class="w-full">
                 <p class="font-bold mb-1">"Jika sudah tanggal deadline tetapi belum kami hubungi, mohon WA kami"</p>
                 <p class="italic">*Simpan nota ini sebagai bukti pengambilan</p>
                 
@@ -290,7 +307,8 @@
                 </div>
                 @endif
             </div>
-            <div class="w-1/2">
+            
+            <div class="w-full">
                 <p class="font-bold underline mb-1">NB (Syarat & Ketentuan):</p>
                 <ul class="leading-tight">
                     <li>Barang rusak karena bahan sudah rapuh bukan tanggungjawab kami.</li>

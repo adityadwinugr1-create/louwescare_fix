@@ -363,17 +363,17 @@
                         </div>
                     </div>
                     <div class="dashed-line mb-3"></div>
-                    <div class="flex justify-between items-start gap-4 text-[9px] text-gray-700">
-                        <div class="w-1/2">
+                    <div class="flex flex-col gap-3 text-[9px] text-gray-700">
+                        <div class="w-full">
                             <p class="font-bold mb-1">"Jika sudah tanggal deadline tetapi belum kami hubungi, mohon WA kami"</p>
                             <p class="italic">*Simpan nota ini sebagai bukti pengambilan</p>
                             <div id="inv-claim-msg" class="mt-2 font-bold border border-black p-1 text-center hidden"></div>
                         </div>
-                        <div class="w-1/2">
+                        <div class="w-full">
                             <p class="font-bold underline mb-1">NB (Syarat & Ketentuan):</p>
                             <ul class="list-disc pl-3 leading-tight space-y-0.5">
                                 <li>Barang rusak karena bahan sudah rapuh bukan tanggungjawab kami.</li>
-                                <li>Apabila barang tidak diambil lebih dari 3 Bulan setelah jadi , hilang bukan tanggung jawab kami.</li>
+                                <li>Apabila barang tidak diambil lebih dari 3 Bulan setelah jadi, hilang bukan tanggung jawab kami.</li>
                             </ul>
                         </div>
                     </div>
@@ -769,32 +769,66 @@ function populateInvoice(data) {
 
             let rows = '';
             let groupedItems = {};
+            
+            // 1. KELOMPOKKAN ITEM DAN HITUNG STATUS
             order.details.forEach(item => {
                 let key = item.nama_barang.trim().toLowerCase();
-                if (!groupedItems[key]) { groupedItems[key] = { nama_barang: item.nama_barang, layanan: [], catatan: [], estimasi_keluar: item.estimasi_keluar, harga: 0 }; }
+                if (!groupedItems[key]) { 
+                    groupedItems[key] = { 
+                        nama_barang: item.nama_barang, 
+                        layanan: [], 
+                        catatan: [], 
+                        estimasi_keluar: item.estimasi_keluar, 
+                        harga: 0,
+                        diambil_count: 0, // <-- Parameter untuk hitung yang sudah diambil
+                        total_item: 0     // <-- Parameter untuk total item jenis ini
+                    }; 
+                }
                 groupedItems[key].layanan.push(item.layanan);
                 if (item.catatan && item.catatan !== '-' && item.catatan.trim() !== '') groupedItems[key].catatan.push(item.catatan);
                 groupedItems[key].harga += parseInt(item.harga);
                 if (item.estimasi_keluar && (!groupedItems[key].estimasi_keluar || item.estimasi_keluar > groupedItems[key].estimasi_keluar)) groupedItems[key].estimasi_keluar = item.estimasi_keluar;
+                
+                // Tambahkan perhitungan
+                groupedItems[key].total_item++;
+                if (item.status === 'Diambil') {
+                    groupedItems[key].diambil_count++;
+                }
             });
 
+            // 2. BUAT BARIS TABEL (TERMASUK CENTANG)
             Object.values(groupedItems).forEach(group => {
                 let estStr = group.estimasi_keluar ? new Date(group.estimasi_keluar).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
                 let catatanStr = group.catatan.length > 0 ? group.catatan.join(', ') : '';
                 
-                // Jika ada catatan, tambahkan di bawah nama item dengan font lebih kecil (9px)
+                // LOGIKA CENTANG
+                let estContent = estStr;
+                if (group.diambil_count > 0) {
+                    estContent += `<br><span style="font-weight: 900; font-size: 14px; color: black;">&#10004;</span>`;
+                    if (group.total_item > 1) {
+                        estContent += `<br><span style="font-size: 9px; font-weight: bold;">(${group.diambil_count}/${group.total_item})</span>`;
+                    }
+                }
+
+                // Tambahan Catatan
                 let itemContent = `<span>${group.nama_barang}</span>`;
                 if (catatanStr && catatanStr !== '-') {
                     itemContent += `<br><span style="font-size: 9px;">Catatan: ${catatanStr}</span>`;
                 }
 
+                // Masukkan ke baris tabel
+                // Cari bagian ini di dalam fungsi populateInvoice(data)
                 rows += `<tr>
                     <td class="align-top border-b border-gray-100 py-1 pr-1">${itemContent}</td>
                     <td class="align-top border-b border-gray-100 py-1 text-[10px]">${group.layanan.join(' + ')}</td>
-                    <td class="align-top border-b border-gray-100 py-1 text-center text-[10px]">${estStr}</td>
-                    <td class="align-top border-b border-gray-100 py-1 text-right">${rupiahFormatter.format(group.harga)}</td>
+                    
+                    // PERUBAHAN: Ubah text-[10px] menjadi text-[11px] font-bold
+                    <td class="align-top border-b border-gray-100 py-1 text-center text-[11px] font-normal">${estContent}</td>
+                    
+                    // PERUBAHAN: Tambahkan kelas text-xs (12px) dan font-bold
+                    <td class="align-top border-b border-gray-100 py-1 text-right text-xs font-normal">${rupiahFormatter.format(group.harga)}</td>
                 </tr>`;
-            });
+            }); 
             
             // Sesuaikan juga kolom parfum agar jumlah td-nya sama (4 kolom)
             if (claimType && claimType.toLowerCase().includes('parfum')) {
@@ -855,6 +889,13 @@ function populateInvoice(data) {
             doc.write('<html><head><title>' + invNo + '</title>');
             doc.write('<style>');
 
+            // Di dalam window.printInvoice, cari baris doc.write font-size
+            doc.write('.text-xl{font-size:20px;} .text-2xl{font-size:24px;} .text-sm{font-size:14px;} .text-xs{font-size:12px;} .text-\\[10px\\]{font-size:10px;} .text-\\[9px\\]{font-size:9px;} .text-\\[11px\\]{font-size:11px;}');
+
+            // Cari bagian doc.write CSS di dalam fungsi printInvoice
+            doc.write('.flex-col { flex-direction: column; }');
+            doc.write('.gap-3 { gap: 12px; }');
+            doc.write('.w-full { width: 100% !important; }');
 
             // Tambahkan baris-baris ini di dalam bagian style doc.write Anda
             doc.write('.flex { display: flex; justify-content: center; align-items: center; width: 100%; }');
@@ -865,16 +906,16 @@ function populateInvoice(data) {
             doc.write('img { display: block; margin: 0 auto; max-width: 60mm; height: auto; }');
 
             // Memaksa kolom Item dan Treatment untuk mepet ke kiri (0 padding)
-doc.write('th, td { vertical-align: top; padding-top: 4px; padding-bottom: 4px; }');
-doc.write('th:nth-child(1), td:nth-child(1), th:nth-child(2), td:nth-child(2) { text-align: left; padding-left: 0 !important; }');
+            doc.write('th, td { vertical-align: top; padding-top: 4px; padding-bottom: 4px; }');
+            doc.write('th:nth-child(1), td:nth-child(1), th:nth-child(2), td:nth-child(2) { text-align: left; padding-left: 0 !important; }');
 
-// Perataan untuk kolom lainnya
-doc.write('th.text-center, td.text-center { text-align: center; }');
-doc.write('th.text-right, td.text-right { text-align: right; }');
+            // Perataan untuk kolom lainnya
+            doc.write('th.text-center, td.text-center { text-align: center; }');
+            doc.write('th.text-right, td.text-right { text-align: right; }');
 
-// Memastikan lebar kolom tetap konsisten
-doc.write('.w-5\\/12 { width: 41.66%; }');
-doc.write('.w-3\\/12 { width: 25%; }');
+            // Memastikan lebar kolom tetap konsisten
+            doc.write('.w-5\\/12 { width: 41.66%; }');
+            doc.write('.w-3\\/12 { width: 25%; }');
             
             // 1. KUNCI UTAMA: Hilangkan batasan tinggi dan overflow agar menyambung
             doc.write('html, body { margin: 0 !important; padding: 0 !important; height: auto !important; min-height: 0 !important; overflow: visible !important; font-family:"Helvetica","Arial",sans-serif; font-size:12px; color:#000; }');
@@ -1130,7 +1171,5 @@ window.filterTreatments = function(categorySelect) {
             }
         });
     });
-
-});
 </script>
 </x-app-layout>
