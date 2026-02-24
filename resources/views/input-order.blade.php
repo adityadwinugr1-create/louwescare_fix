@@ -179,9 +179,10 @@
                 </div>
             </div>
 
-            {{-- BOX TIPE CUSTOMER (KIRI) & POIN (KANAN) --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 items-center">
-                {{-- Tipe Customer (Kiri) --}}
+            {{-- BOX TIPE CUSTOMER (KIRI) & KANAN (POIN / SUMBER INFO) --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12 items-center">
+                
+                {{-- Kiri: Tipe Customer --}}
                 <div id="box-tipe-customer" class="bg-[#E0E0E0] rounded-lg p-3 px-5 hover:shadow-md transition">
                     <label class="block text-sm font-semibold text-gray-600 mb-1">Tipe Customer</label>
                     <input type="text" 
@@ -192,38 +193,35 @@
                            placeholder="Isi Tipe Customer (Cth: General)">
                 </div>
 
-                {{-- Box Point Mepet Kanan --}}
-                <div class="flex justify-end">
+                {{-- Kanan: Kontainer untuk Poin atau Sumber Info --}}
+                <div class="flex justify-end w-full">
+                    
+                    {{-- Box Point (Hanya Tampil untuk Member) --}}
                     <div id="box-point" class="bg-[#E0E0E0] rounded-lg p-2 px-4 flex items-center gap-4 hover:shadow-md transition w-fit border border-gray-300 {{ ($is_member ?? false) ? '' : 'hidden' }}">
                         <div class="flex flex-col border-r border-gray-400 pr-4">
                             <label class="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Point</label>
                             <span id="poin-text" class="text-gray-800 font-black text-base leading-none">{{ $poin ?? 0 }}/8</span>
                         </div>
-                        
                         <div class="flex items-center gap-2">
-                            <button type="button" id="btn-claim" onclick="window.openClaimModal()" 
-                                    class="bg-blue-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-md shadow-sm hover:bg-blue-700 transition {{ ($poin ?? 0) >= 8 ? '' : 'hidden' }}">
-                                CLAIM
-                            </button>
+                            <button type="button" id="btn-claim" onclick="window.openClaimModal()" class="bg-blue-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-md shadow-sm hover:bg-blue-700 transition {{ ($poin ?? 0) >= 8 ? '' : 'hidden' }}">CLAIM</button>
                             <span id="reward-badge" class="text-[9px] bg-green-500 text-white px-2 py-1 rounded-full animate-pulse hidden"></span>
                         </div>
                     </div>
-                </div>
-            </div>
-            
-            {{-- SUMBER INFO: OTOMATIS HIDDEN UNTUK MEMBER/REPEAT ORDER --}}
-            <div id="box-sumber-info" class="grid grid-cols-1 mb-12 {{ ($is_member ?? false) || ($status ?? '') == 'Repeat Order' ? 'hidden' : '' }}">
-                <div class="w-full bg-[#E0E0E0] rounded-lg p-3 px-5 relative hover:shadow-md transition">
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">Tau Tempat ini Dari...</label>
-                    <select name="sumber_info" style="background-image: none;" class="w-full bg-transparent border-none p-0 pr-8 focus:ring-0 text-gray-800 font-medium cursor-pointer appearance-none">
-                        <option value="Instagram">Instagram</option>
-                        <option value="Teman">Teman</option>
-                        <option value="Google Maps">Google Maps</option>
-                        <option value="Lewat">Lewat Depan Toko</option>
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center pt-4">
-                        <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+
+                    {{-- Sumber Info (Hanya Tampil untuk New Customer) --}}
+                    <div id="box-sumber-info" class="w-full bg-[#E0E0E0] rounded-lg p-3 px-5 relative hover:shadow-md transition {{ ($is_member ?? false) || ($status ?? '') == 'Repeat Order' ? 'hidden' : '' }}">
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">Tau Tempat ini Dari...</label>
+                        <select name="sumber_info" style="background-image: none;" class="w-full bg-transparent border-none p-0 pr-8 focus:ring-0 text-gray-800 font-medium cursor-pointer appearance-none">
+                            <option value="Instagram">Instagram</option>
+                            <option value="Teman">Teman</option>
+                            <option value="Google Maps">Google Maps</option>
+                            <option value="Lewat">Lewat Depan Toko</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center pt-4">
+                            <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
                     </div>
+
                 </div>
             </div>
 
