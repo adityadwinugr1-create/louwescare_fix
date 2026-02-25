@@ -450,9 +450,290 @@
         let gDiscount = 0;
         let gFinalBill = 0;
 
+        // ==========================================
+        // AUTO-SAVE & RESTORE FORM DATA (LocalStorage)
+        // ==========================================
+        
+        const STORAGE_KEY = 'louwes_input_order_draft';
+
+        // Fungsi untuk menyimpan data form ke localStorage
+        function saveFormData() {
+            const formData = {
+                // Data Customer
+                nama_customer: document.getElementById('nama_customer')?.value || '',
+                no_hp: document.getElementById('no_hp')?.value || '',
+                tipe_customer: document.getElementById('input_tipe_customer')?.value || '',
+                sumber_info: document.querySelector('select[name="sumber_info"]')?.value || '',
+                
+                // Data CS & Jumlah
+                cs: document.querySelector('select[name="cs"]')?.value || '',
+                jumlah_total: document.getElementById('inputJumlah')?.value || '1',
+                
+                // Klaim Reward
+                claim_diskon_qty: document.getElementById('input_claim_diskon_qty')?.value || '0',
+                claim_parfum_qty: document.getElementById('input_claim_parfum_qty')?.value || '0',
+                
+                // Timestamp saved
+                saved_at: new Date().toISOString()
+            };
+            
+            // Simpan data item (nama barang, catatan, estimasi)
+            const itemGroups = [];
+            document.querySelectorAll('.item-group').forEach((group, groupIndex) => {
+                const mainItem = group.querySelector('.main-item-input')?.value || '';
+                const mainCatatan = group.querySelector('.main-catatan-input')?.value || '';
+                const mainEstimasi = group.querySelector('.main-estimasi-input')?.value || '';
+                
+                const treatments = [];
+                group.querySelectorAll('.treatment-row').forEach((row, rowIndex) => {
+                    const category = row.querySelector('.category-select')?.value || '';
+                    const treatmentSelect = row.querySelector('.treatment-select');
+                    const treatmentInput = row.querySelector('.treatment-input');
+                    const treatment = (!treatmentSelect?.classList.contains('hidden') && treatmentSelect?.value) 
+                        ? treatmentSelect.value 
+                        : (treatmentInput?.value || '');
+                    const harga = row.querySelector('.harga-input')?.value || '';
+                    const warna = row.querySelector('.input-warna')?.value || '';
+                    
+                    treatments.push({
+                        category,
+                        treatment,
+                        harga,
+                        warna
+                    });
+                });
+                
+                itemGroups.push({
+                    mainItem,
+                    mainCatatan,
+                    mainEstimasi,
+                    treatments
+                });
+            });
+            
+            formData.items = itemGroups;
+            
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+                console.log('Draft saved:', formData);
+            } catch (e) {
+                console.error('Error saving draft:', e);
+            }
+        }
+
+        // Fungsi untuk memuat data dari localStorage
+        function loadFormData() {
+            try {
+                const savedData = localStorage.getItem(STORAGE_KEY);
+                if (!savedData) return;
+                
+                const formData = JSON.parse(savedData);
+                console.log('Loading draft:', formData);
+                
+                // Cek jika ada data yang tersimpan
+                if (!formData.nama_customer && !formData.no_hp && (!formData.items || formData.items.length === 0)) {
+                    return;
+                }
+                
+                // Konfirmasi pengguna ingin melanjutkan atau memulai baru
+                const shouldRestore = confirm('Ditemukan data draft yang belum tersimpan. Apakah Anda ingin melanjutkan mengisi form?');
+                
+                if (shouldRestore) {
+                    restoreFormData(formData);
+                } else {
+                    clearFormData();
+                }
+            } catch (e) {
+                console.error('Error loading draft:', e);
+            }
+        }
+
+        // Fungsi untuk merestore data ke form
+        function restoreFormData(formData) {
+            // Restore data customer
+            if (formData.nama_customer) {
+                document.getElementById('nama_customer').value = formData.nama_customer;
+            }
+            if (formData.no_hp) {
+                document.getElementById('no_hp').value = formData.no_hp;
+                // Trigger cek customer
+                if (formData.no_hp.length >= 4) {
+                    window.cekCustomer();
+                }
+            }
+            if (formData.tipe_customer) {
+                document.getElementById('input_tipe_customer').value = formData.tipe_customer;
+            }
+            if (formData.sumber_info) {
+                const sumberSelect = document.querySelector('select[name="sumber_info"]');
+                if (sumberSelect) sumberSelect.value = formData.sumber_info;
+            }
+            if (formData.cs) {
+                const csSelect = document.querySelector('select[name="cs"]');
+                if (csSelect) csSelect.value = formData.cs;
+            }
+            
+            // Restore jumlah item
+            const jumlah = parseInt(formData.jumlah_total) || 1;
+            const currentJumlah = parseInt(document.getElementById('inputJumlah').value) || 1;
+            
+            if (formData.items && formData.items.length > 0) {
+                // Sesuaikan jumlah item groups
+                if (jumlah > currentJumlah) {
+                    // Tambah item groups
+                    for (let i = currentJumlah; i < jumlah; i++) {
+                        window.adjustJumlah(1);
+                    }
+                } else if (jumlah < currentJumlah) {
+                    // Kurangi item groups
+                    for (let i = currentJumlah; i > jumlah; i--) {
+                        window.adjustJumlah(-1);
+                    }
+                }
+                
+                // Restore data per item
+                const itemGroups = document.querySelectorAll('.item-group');
+                formData.items.forEach((itemData, index) => {
+                    if (itemGroups[index]) {
+                        const group = itemGroups[index];
+                        
+                        // Restore main item
+                        const mainItemInput = group.querySelector('.main-item-input');
+                        if (mainItemInput && itemData.mainItem) {
+                            mainItemInput.value = itemData.mainItem;
+                            syncMainInputs(mainItemInput, 'hidden-item');
+                        }
+                        
+                        const mainCatatanInput = group.querySelector('.main-catatan-input');
+                        if (mainCatatanInput && itemData.mainCatatan) {
+                            mainCatatanInput.value = itemData.mainCatatan;
+                            syncMainInputs(mainCatatanInput, 'hidden-catatan');
+                        }
+                        
+                        const mainEstimasiInput = group.querySelector('.main-estimasi-input');
+                        if (mainEstimasiInput && itemData.mainEstimasi) {
+                            mainEstimasiInput.value = itemData.mainEstimasi;
+                            mainEstimasiInput.style.color = 'inherit';
+                            const placeholder = mainEstimasiInput.nextElementSibling;
+                            if (placeholder) placeholder.classList.add('hidden');
+                            syncMainInputs(mainEstimasiInput, 'hidden-estimasi');
+                        }
+                        
+                        // Restore treatments
+                        if (itemData.treatments && itemData.treatments.length > 0) {
+                            const treatmentRows = group.querySelectorAll('.treatment-row');
+                            
+                            // Sesuaikan jumlah treatment rows
+                            if (itemData.treatments.length > treatmentRows.length) {
+                                for (let i = treatmentRows.length; i < itemData.treatments.length; i++) {
+                                    window.addTreatmentRow(group.querySelector('.treatments-container button'));
+                                }
+                            }
+                            
+                            // Restore setiap treatment
+                            const updatedRows = group.querySelectorAll('.treatment-row');
+                            itemData.treatments.forEach((treatData, treatIndex) => {
+                                if (updatedRows[treatIndex]) {
+                                    const row = updatedRows[treatIndex];
+                                    
+                                    // Set category
+                                    const categorySelect = row.querySelector('.category-select');
+                                    if (categorySelect && treatData.category) {
+                                        categorySelect.value = treatData.category;
+                                        // Trigger filter untuk show/hide warna
+                                        filterTreatments(categorySelect);
+                                    }
+                                    
+                                    // Set treatment (bisa select atau input)
+                                    setTimeout(() => {
+                                        const treatmentSelect = row.querySelector('.treatment-select');
+                                        const treatmentInput = row.querySelector('.treatment-input');
+                                        
+                                        if (treatmentSelect && !treatmentSelect.classList.contains('hidden')) {
+                                            treatmentSelect.value = treatData.treatment || '';
+                                        } else if (treatmentInput) {
+                                            treatmentInput.value = treatData.treatment || '';
+                                        }
+                                        
+                                        // Set warna jika ada
+                                        const warnaInput = row.querySelector('.input-warna');
+                                        if (warnaInput && treatData.warna) {
+                                            warnaInput.value = treatData.warna;
+                                        }
+                                        
+                                        // Set harga
+                                        const hargaInput = row.querySelector('.harga-input');
+                                        if (hargaInput && treatData.harga) {
+                                            hargaInput.value = treatData.harga;
+                                        }
+                                    }, 100);
+                                }
+                            });
+                        }
+                    }
+                });
+                
+                // Recalculate total setelah restore
+                setTimeout(() => {
+                    calculateGlobalTotal();
+                }, 300);
+            }
+            
+            // Tampilkan notifikasi
+            alert('Data berhasil dipulihkan! Jangan lupa untuk menyimpan pesanan Anda.');
+        }
+
+        // Fungsi untuk menghapus data dari localStorage
+        function clearFormData() {
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+                console.log('Draft cleared');
+            } catch (e) {
+                console.error('Error clearing draft:', e);
+            }
+        }
+
+        // Setup auto-save listener
+        function setupAutoSave() {
+            const form = document.getElementById('orderForm');
+            if (!form) return;
+            
+            // Listen untuk semua input changes
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('change', saveFormData);
+                input.addEventListener('input', saveFormData);
+            });
+            
+            // Listen untuk dynamic elements (add/remove item)
+            const observer = new MutationObserver(() => {
+                saveFormData();
+            });
+            
+            const container = document.getElementById('itemsContainer');
+            if (container) {
+                observer.observe(container, { childList: true, subtree: true });
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
             document.querySelectorAll('.item-group').forEach(group => { group.querySelectorAll('.treatment-row').forEach(row => attachEventsToTreatmentRow(row)); });
             if(document.getElementById('no_hp').value.length >= 4) { window.cekCustomer(); }
+            
+            // Setup auto-save
+            setupAutoSave();
+            
+            // Coba load data draft jika ada
+            // loadFormData(); // Di-comment agar tidak mengganggu flow normal
+            // Tapi akan dipanggil jika ada data tersimpan saat page load
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            if (savedData) {
+                const formData = JSON.parse(savedData);
+                // Hanya prompt jika ada data items
+                if (formData.items && formData.items.length > 0) {
+                    loadFormData();
+                }
+            }
         });
 
         window.cekCustomer = function() {
@@ -750,6 +1031,9 @@ window.submitOrder = function() {
                 window.closePaymentModal();
                 document.getElementById('modal-invoice').style.display = 'flex';
                 document.getElementById('modal-invoice').classList.remove('hidden');
+                
+                // Clear localStorage setelah pesanan berhasil
+                clearFormData();
             }
         },
         error: function(xhr) { 

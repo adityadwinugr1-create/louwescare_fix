@@ -551,7 +551,7 @@ class OrderController extends Controller
                     $msg .= "Apakah yang sudah selesai ingin diambil duluan atau menunggu sekalian selesai semua kak?\n\n";
                 } else {
                     // KASUS: Semua Selesai (Standard)
-                    $msg .= "Kabar gembira! Pesanan Kakak dengan No Nota: *{$order->no_invoice}* sudah selesai dan siap diambil.\n\n";
+                    $msg .= "Pesanan Kakak dengan No Nota: *{$order->no_invoice}* sudah selesai dan siap diambil.\n\n";
                     $msg .= "{$detailsList}\n\n";
                 }
 
