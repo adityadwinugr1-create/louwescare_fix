@@ -1047,22 +1047,49 @@ window.filterTreatments = function(categorySelect) {
         window.removeTreatment = function(btn) { const row = btn.closest('.treatment-row'); if (row.parentElement.querySelectorAll('.treatment-row').length > 1) row.remove(); calculateGlobalTotal(); }
         
         window.adjustJumlah = function(delta) {
-            const input = document.getElementById('inputJumlah'); const container = document.getElementById('itemsContainer'); let val = parseInt(input.value) || 1;
-            if (delta > 0) { 
-                val++; 
-                const newGroup = container.querySelector('.item-group').cloneNode(true); 
-                newGroup.querySelectorAll('input').forEach(i => { 
-                    i.value = ''; 
-                    if(i.classList.contains('main-estimasi-input')) {
-                        i.style.color = 'transparent';
-                        i.nextElementSibling.classList.remove('hidden');
-                    }
-                }); 
-                container.appendChild(newGroup); 
-            } 
-            else if (val > 1) { val--; container.removeChild(container.lastElementChild); } input.value = val;
-            calculateGlobalTotal();
+    const input = document.getElementById('inputJumlah'); 
+    const container = document.getElementById('itemsContainer'); 
+    let val = parseInt(input.value) || 1;
+
+    if (delta > 0) { 
+        val++; 
+        // 1. Kloning elemen grup pertama
+        const newGroup = container.querySelector('.item-group').cloneNode(true); 
+        
+        // 2. SOLUSI: Hapus semua baris treatment tambahan hasil kloning, sisakan 1 saja
+        const treatmentRows = newGroup.querySelectorAll('.treatment-row');
+        for (let i = 1; i < treatmentRows.length; i++) {
+            treatmentRows[i].remove();
         }
+
+        // 3. Reset semua nilai input
+        newGroup.querySelectorAll('input').forEach(i => { 
+            i.value = ''; 
+            if(i.classList.contains('main-estimasi-input')) {
+                i.style.color = 'transparent';
+                i.nextElementSibling.classList.remove('hidden');
+            }
+        }); 
+
+        // 4. SOLUSI: Reset semua dropdown (select) ke default
+        newGroup.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+        newGroup.querySelector('.treatment-select').innerHTML = '<option value="">Pilih Kat. Dulu</option>';
+        
+        // 5. SOLUSI: Sembunyikan tombol silang hapus treatment karena ini baris pertama
+        newGroup.querySelector('.btn-remove-treatment').classList.add('hidden');
+        
+        // Pasang ulang event listener agar format rupiah berfungsi
+        attachEventsToTreatmentRow(newGroup.querySelector('.treatment-row'));
+
+        container.appendChild(newGroup); 
+    } 
+    else if (val > 1) { 
+        val--; 
+        container.removeChild(container.lastElementChild); 
+    } 
+    input.value = val;
+    calculateGlobalTotal();
+}
 
         window.openMemberModal = function() { 
             let curName = $('#nama_customer').val();
