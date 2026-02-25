@@ -512,7 +512,7 @@
     <p class="font-bold text-[10px] text-gray-600 uppercase tracking-wide">Clean - Fresh - Better</p>
     </div>
                         <p class="text-[9px] mt-1 text-gray-500">Jl. Ringroad Timur No 9, Plumbon, Banguntapan, Bantul, DIY 55196</p>
-                        <p class="text-[9px] text-gray-500">Instagram: @Louwes Shoes Care | WA: 081390154885</p>
+                        <p class="text-[9px] text-gray-500">Instagram: louwescare | WA: 081390154885</p>
                     </div>
                     <div class="thick-line mb-3"></div>
                     <div class="flex justify-between items-end mb-4">
@@ -699,9 +699,9 @@
                     estContent += `<br><span style="font-weight: 900; font-size: 14px; color: black;">&#10004;</span>`;
                     
                     // Jika pelanggan bawa 2 sepatu "Converse", tapi baru diambil 1, tampilkan "(1/2)"
-                    if (group.total_item > 1) {
-                        estContent += `<br><span style="font-size: 9px; font-weight: bold;">(${group.diambil_count}/${group.total_item})</span>`;
-                    }
+                    // if (group.total_item > 1) {
+                    //     estContent += `<br><span style="font-size: 9px; font-weight: bold;">(${group.diambil_count}/${group.total_item})</span>`;
+                    // }
                 }
 
                 // Tambahan Catatan
