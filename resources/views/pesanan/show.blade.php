@@ -773,10 +773,18 @@
             if (claimType) { msgDiv.text('*** REWARD: ' + claimType.toUpperCase() + ' ***').removeClass('hidden'); } else { msgDiv.addClass('hidden'); }
         }
 
+        // 3. FUNGSI DOWNLOAD PDF 80MM
         window.printInvoice = function() {
             var invNo = $('#inv-no').text().trim() || 'Invoice'; 
             var content = document.getElementById('invoice-content').innerHTML;
             
+            // --- AWAL TRIK NAMA FILE PDF ---
+            // Simpan title asli halaman utama
+            var originalTitle = document.title;
+            // Ubah title halaman utama menjadi nomor invoice agar terbaca saat Save to PDF
+            document.title = invNo;
+            // --- AKHIR TRIK NAMA FILE PDF ---
+
             var iframeId = 'invoice-print-frame';
             var iframe = document.getElementById(iframeId);
             if (iframe) { document.body.removeChild(iframe); }
@@ -788,48 +796,60 @@
             
             var doc = iframe.contentWindow.document;
             doc.open();
+            // Title iframe tetap diset untuk jaga-jaga di browser tertentu
             doc.write('<html><head><title>' + invNo + '</title>');
             doc.write('<style>');
-            
+
+            // Di dalam window.printInvoice, cari baris doc.write font-size
             doc.write('.text-xl{font-size:20px;} .text-2xl{font-size:24px;} .text-sm{font-size:14px;} .text-xs{font-size:12px;} .text-\\[10px\\]{font-size:10px;} .text-\\[9px\\]{font-size:9px;} .text-\\[11px\\]{font-size:11px;}');
 
+            // Cari bagian doc.write CSS di dalam fungsi printInvoice
             doc.write('.flex-col { flex-direction: column; }');
             doc.write('.gap-3 { gap: 12px; }');
-            doc.write('.w-full { width: 100% !important; }');                                                        
+            doc.write('.w-full { width: 100% !important; }');
 
+            // Tambahkan baris-baris ini di dalam bagian style doc.write Anda
             doc.write('.flex { display: flex; justify-content: center; align-items: center; width: 100%; }');
             doc.write('.justify-center { justify-content: center; }');
             doc.write('.text-center { text-align: center; }');
 
+            // Memastikan gambar berada di tengah dan ukurannya proporsional
             doc.write('img { display: block; margin: 0 auto; max-width: 60mm; height: auto; }');
 
+            // Memaksa kolom Item dan Treatment untuk mepet ke kiri (0 padding)
             doc.write('th, td { vertical-align: top; padding-top: 4px; padding-bottom: 4px; }');
             doc.write('th:nth-child(1), td:nth-child(1), th:nth-child(2), td:nth-child(2) { text-align: left; padding-left: 0 !important; }');
 
+            // Perataan untuk kolom lainnya
             doc.write('th.text-center, td.text-center { text-align: center; }');
             doc.write('th.text-right, td.text-right { text-align: right; }');
 
+            // Memastikan lebar kolom tetap konsisten
             doc.write('.w-5\\/12 { width: 41.66%; }');
             doc.write('.w-3\\/12 { width: 25%; }');
             
+            // 1. KUNCI UTAMA: Hilangkan batasan tinggi dan overflow agar menyambung
             doc.write('html, body { margin: 0 !important; padding: 0 !important; height: auto !important; min-height: 0 !important; overflow: visible !important; font-family:"Helvetica","Arial",sans-serif; font-size:12px; color:#000; }');
             
             doc.write('table { width: 100%; border-collapse: collapse; table-layout: fixed; }');
             doc.write('td, th { word-wrap: break-word; overflow-wrap: break-word; vertical-align: top; }');
             
+            // Konversi layout Tailwind Anda
             doc.write('.w-1\\/2{width:50%;} .w-5\\/12{width:41.66%;} .w-3\\/12{width:25%;} .w-2\\/12{width:16.66%;} .w-full{width:100%;}');
             doc.write('.text-center{text-align:center;} .text-right{text-align:right;} .pr-2{padding-right:8px;}');
             doc.write('.dashed-line{border-bottom:1px dashed #000;} .thick-line{border-bottom:2px solid #000;} .border-b{border-bottom:1px solid #000;}');
             
+            // Pertahankan style sebelumnya (Bold, Ukuran, dll)
             doc.write('.font-bold{font-weight:bold;} .font-normal{font-weight:normal;} .italic{font-style:italic;} .uppercase{text-transform:uppercase;}');
             doc.write('.mb-1{margin-bottom:4px;} .mb-2{margin-bottom:8px;} .mb-3{margin-bottom:12px;} .mb-4{margin-bottom:16px;} .mb-6{margin-bottom:24px;} .mt-1{margin-top:4px;} .mt-2{margin-top:8px;} .mt-6{margin-top:24px;}');
             doc.write('.hidden{display:none;} .flex{display:flex;justify-content:space-between;align-items:flex-start;}');
             doc.write('ul{padding-left:15px;margin:5px 0;}');
 
+            // 2. ANTI-POTONG: Mencegah garis double dan pemotongan halaman
             doc.write('@media print {');
-            doc.write('  @page { size: 80mm auto; margin: 0; }');
-            doc.write('  thead { display: table-row-group; }');
-            doc.write('  table, tr, td, th, p, div { page-break-inside: avoid !important; break-inside: avoid !important; }');
+            doc.write('  @page { size: 80mm auto; margin: 0; }'); // 'auto' memungkinkan kertas memanjang sesuai isi
+            doc.write('  thead { display: table-row-group; }'); // Mencegah judul kolom berulang (garis double)
+            doc.write('  table, tr, td, th, p, div { page-break-inside: avoid !important; break-inside: avoid !important; }'); // Anti-potong
             doc.write('}');
             
             doc.write('</style></head><body>');
@@ -840,6 +860,11 @@
             iframe.contentWindow.focus();
             setTimeout(function() {
                 iframe.contentWindow.print();
+                
+                // Kembalikan title web ke awal setelah dialog print muncul (jeda 1 detik)
+                setTimeout(function() {
+                    document.title = originalTitle;
+                }, 1000);
             }, 250);
         }
 

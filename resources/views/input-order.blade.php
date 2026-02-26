@@ -1164,10 +1164,18 @@ function populateInvoice(data) {
         }
 
         // 3. FUNGSI DOWNLOAD PDF 80MM
+        // 3. FUNGSI DOWNLOAD PDF 80MM
         window.printInvoice = function() {
             var invNo = $('#inv-no').text().trim() || 'Invoice'; 
             var content = document.getElementById('invoice-content').innerHTML;
             
+            // --- AWAL TRIK NAMA FILE PDF ---
+            // Simpan title asli halaman utama
+            var originalTitle = document.title;
+            // Ubah title halaman utama menjadi nomor invoice agar terbaca saat Save to PDF
+            document.title = invNo;
+            // --- AKHIR TRIK NAMA FILE PDF ---
+
             var iframeId = 'invoice-print-frame';
             var iframe = document.getElementById(iframeId);
             if (iframe) { document.body.removeChild(iframe); }
@@ -1179,6 +1187,7 @@ function populateInvoice(data) {
             
             var doc = iframe.contentWindow.document;
             doc.open();
+            // Title iframe tetap diset untuk jaga-jaga di browser tertentu
             doc.write('<html><head><title>' + invNo + '</title>');
             doc.write('<style>');
 
@@ -1223,7 +1232,6 @@ function populateInvoice(data) {
             
             // Pertahankan style sebelumnya (Bold, Ukuran, dll)
             doc.write('.font-bold{font-weight:bold;} .font-normal{font-weight:normal;} .italic{font-style:italic;} .uppercase{text-transform:uppercase;}');
-            doc.write('.text-xl{font-size:20px;} .text-2xl{font-size:24px;} .text-sm{font-size:14px;} .text-\\[10px\\]{font-size:10px;} .text-\\[9px\\]{font-size:9px;} .text-\\[11px\\]{font-size:11px;}');
             doc.write('.mb-1{margin-bottom:4px;} .mb-2{margin-bottom:8px;} .mb-3{margin-bottom:12px;} .mb-4{margin-bottom:16px;} .mb-6{margin-bottom:24px;} .mt-1{margin-top:4px;} .mt-2{margin-top:8px;} .mt-6{margin-top:24px;}');
             doc.write('.hidden{display:none;} .flex{display:flex;justify-content:space-between;align-items:flex-start;}');
             doc.write('ul{padding-left:15px;margin:5px 0;}');
@@ -1243,6 +1251,11 @@ function populateInvoice(data) {
             iframe.contentWindow.focus();
             setTimeout(function() {
                 iframe.contentWindow.print();
+                
+                // Kembalikan title web ke awal setelah dialog print muncul (jeda 1 detik)
+                setTimeout(function() {
+                    document.title = originalTitle;
+                }, 1000);
             }, 250);
         }
 
