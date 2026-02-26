@@ -22,6 +22,22 @@
             .table-wrapper {
                 -webkit-overflow-scrolling: touch;
             }
+            
+            /* TABLE STACKING FOR MOBILE (Tampilan Kartu di HP) */
+            .responsive-table thead { display: none; }
+            .responsive-table tbody tr {
+                display: flex;
+                flex-direction: column;
+                border: 1px solid #e5e7eb;
+                margin-bottom: 1rem;
+                border-radius: 0.75rem;
+                padding: 1rem;
+                background-color: white;
+                box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            }
+            .responsive-table td { display: block; width: 100%; padding: 0.5rem 0; border: none; }
+            .responsive-table .td-checkbox { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #e5e7eb; margin-bottom: 0.5rem; padding-bottom: 0.5rem; }
+            .responsive-table td:empty { display: none; }
         }
     </style>
 
@@ -143,6 +159,23 @@
                 this.closePaymentModal();
                 setTimeout(() => window.updateOrder(true), 100);
             },
+
+            handleBayarLunas() {
+                let csKeluar = document.getElementById('kasir_keluar').value;
+                if (!csKeluar) {
+                    alert('Harap pilih CS Keluar (Penyerah) terlebih dahulu!');
+                    document.getElementById('kasir_keluar').focus();
+                    return;
+                }
+
+                if (document.querySelectorAll('input[name=\'selected_items[]\']:checked').length === 0) {
+                    alert('Harap checklist item terlebih dahulu!');
+                    return;
+                }
+
+                window.autoUpdateStatus();
+                this.openPaymentModal();
+            },
             
             get change() {
                 let pay = parseInt(this.payInput.replace(/\./g, '')) || 0;
@@ -219,7 +252,7 @@
                                 
                                 {{-- BOX POIN & CLAIM --}}
                                 @if($order->customer && $order->customer->member)
-                                <div class="bg-gray-50 rounded-xl p-3 px-4 flex flex-wrap items-center gap-4 border border-gray-200 mt-4">
+                                <div class="bg-gray-50 rounded-xl p-3 px-4 inline-flex flex-wrap items-center gap-4 border border-gray-200 mt-4">
                                     <div class="flex flex-col border-r border-gray-300 pr-4">
                                         <label class="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Point</label>
                                         <span class="text-gray-900 font-black text-lg leading-none mt-1" x-text="poinAsli + '/8'"></span>
@@ -264,10 +297,17 @@
 
                 {{-- HEADER 2: Rincian Layanan --}}
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100">
-                    <div class="p-6">
+                    <div class="p-3 sm:p-6">
                         <h3 class="text-lg font-bold text-gray-900 mb-4">Rincian Layanan</h3>
-                        <div class="table-wrapper overflow-x-auto border border-gray-200 rounded-xl">
-                            <table class="min-w-[800px] w-full divide-y divide-gray-200 text-sm">
+
+                        {{-- Mobile Select All (Hanya muncul di HP) --}}
+                        <div class="sm:hidden mb-4 flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200">
+                            <label for="mobile-select-all" class="text-sm font-bold text-gray-700 select-none flex-1">Pilih Semua Item</label>
+                            <input type="checkbox" id="mobile-select-all" onclick="toggleSelectAll(this)" class="w-5 h-5 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 ml-3">
+                        </div>
+
+                        <div class="table-wrapper sm:overflow-x-auto border border-gray-200 rounded-xl">
+                            <table class="responsive-table sm:min-w-[800px] w-full divide-y divide-gray-200 text-sm">
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-4 py-4 text-center font-bold text-gray-600 w-[5%]"><input type="checkbox" onclick="toggleSelectAll(this)" class="w-5 h-5 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"></th>
@@ -285,13 +325,15 @@
                                         @foreach($details as $index => $item)
                                         <tr class="hover:bg-blue-50/50 transition-colors border-b border-gray-100">
                                             @if($index === 0)
-                                            <td class="p-3 text-center align-top pt-4" rowspan="{{ count($details) }}">
+                                            <td class="p-3 text-center align-top pt-4 td-checkbox" rowspan="{{ count($details) }}">
+                                                <span class="sm:hidden text-xs font-bold text-gray-500 uppercase">Pilih Item</span>
                                                 <input type="checkbox" name="selected_items[]" value="{{ $groupIds }}" class="w-5 h-5 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                                             </td>
                                             <td class="p-3 align-top" rowspan="{{ count($details) }}">
+                                                <span class="sm:hidden text-xs font-bold text-gray-500 uppercase mb-1 block">Item / Barang</span>
                                                 <div class="flex flex-col gap-1.5">
                                                     <input type="text" name="item[]" value="{{ $item->nama_barang }}" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-900 shadow-sm focus:border-blue-500 group-item-{{ $loop->parent->index }}" oninput="syncInputs('group-item-{{ $loop->parent->index }}', this.value)">
-                                                    <input type="text" name="catatan_detail[]" value="{{ $item->catatan }}" class="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[11px] italic text-gray-600 focus:bg-white group-catatan-{{ $loop->parent->index }}" placeholder="Catatan item..." oninput="syncInputs('group-catatan-{{ $loop->parent->index }}', this.value)">
+                                                    <input type="text" name="catatan_detail[]" value="{{ $item->catatan }}" class="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs italic text-gray-600 focus:bg-white group-catatan-{{ $loop->parent->index }}" placeholder="Catatan item..." oninput="syncInputs('group-catatan-{{ $loop->parent->index }}', this.value)">
                                                 </div>
                                             </td>
                                             @else
@@ -325,9 +367,10 @@
                                                 }
                                             @endphp
 
+                                            <span class="sm:hidden text-xs font-bold text-gray-500 uppercase mb-1 block">Layanan</span>
                                             <div class="flex flex-col gap-2">
                                                 {{-- 2. DROPDOWN KATEGORI --}}
-                                                <select class="category-select w-full px-3 py-2 bg-blue-50/50 border border-blue-100 rounded-lg text-xs font-bold text-gray-900 focus:bg-white focus:border-blue-500 cursor-pointer shadow-sm" onchange="filterTreatmentsDetail(this)">
+                                                <select class="category-select w-full px-3 py-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm font-bold text-gray-900 focus:bg-white focus:border-blue-500 cursor-pointer shadow-sm" onchange="filterTreatmentsDetail(this)">
                                                     <option value="">Pilih Kategori</option>
                                                     @foreach($kategoriList as $kat)
                                                         <option value="{{ $kat }}" {{ $kategori == $kat ? 'selected' : '' }}>{{ $kat }}</option>
@@ -336,7 +379,7 @@
                                                 </select>
 
                                                 {{-- 3. DROPDOWN / INPUT LAYANAN --}}
-                                                <select class="treatment-select w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-900 focus:border-blue-500 cursor-pointer shadow-sm {{ $kategori == 'Custom' ? 'hidden' : '' }}" onchange="updateHiddenLayanan(this)">
+                                                <select class="treatment-select w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-900 focus:border-blue-500 cursor-pointer shadow-sm {{ $kategori == 'Custom' ? 'hidden' : '' }}" onchange="updateHiddenLayanan(this)">
                                                     <option value="">Pilih Layanan</option>
                                                     @if($kategori !== 'Custom')
                                                         @foreach($treatments->where('kategori', $kategori) as $t)
@@ -346,10 +389,10 @@
                                                 </select>
                                                 
                                                 {{-- Input Manual jika Custom --}}
-                                                <input type="text" class="treatment-input w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-semibold text-gray-900 focus:border-blue-500 shadow-sm {{ $kategori == 'Custom' ? '' : 'hidden' }}" placeholder="Ketik layanan manual..." value="{{ $kategori == 'Custom' ? $namaLayanan : '' }}" oninput="updateHiddenLayanan(this)" {{ $kategori == 'Custom' ? '' : 'disabled' }}>
+                                                <input type="text" class="treatment-input w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-900 focus:border-blue-500 shadow-sm {{ $kategori == 'Custom' ? '' : 'hidden' }}" placeholder="Ketik layanan manual..." value="{{ $kategori == 'Custom' ? $namaLayanan : '' }}" oninput="updateHiddenLayanan(this)" {{ $kategori == 'Custom' ? '' : 'disabled' }}>
 
                                                 {{-- 4. INPUT WARNA --}}
-                                                <input type="text" class="input-warna w-full px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-xs font-bold text-gray-900 focus:border-yellow-400 shadow-sm {{ $isRepaint ? '' : 'hidden' }}" placeholder="Warna (cth: Merah)" value="{{ $warna }}" oninput="updateHiddenLayanan(this)">
+                                                <input type="text" class="input-warna w-full px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm font-bold text-gray-900 focus:border-yellow-400 shadow-sm {{ $isRepaint ? '' : 'hidden' }}" placeholder="Warna (cth: Merah)" value="{{ $warna }}" oninput="updateHiddenLayanan(this)">
 
                                                 {{-- 5. INPUT RAHASIA --}}
                                                 <input type="hidden" name="kategori_treatment[]" class="hidden-kategori-treatment" value="{{ $layananUtuh }}">
@@ -358,14 +401,17 @@
                                             
                                         @if($index === 0)
                                         <td class="p-3 align-top" rowspan="{{ count($details) }}">
-                                            <input type="date" name="tanggal_keluar[]" value="{{ $item->estimasi_keluar ? \Carbon\Carbon::parse($item->estimasi_keluar)->format('Y-m-d') : '' }}" class="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-xs shadow-sm font-semibold" onchange="syncInputs('group-date-{{ $loop->parent->index }}', this.value)">
+                                            <span class="sm:hidden text-xs font-bold text-gray-500 uppercase mb-1 block">Est. Keluar</span>
+                                            <input type="date" name="tanggal_keluar[]" value="{{ $item->estimasi_keluar ? \Carbon\Carbon::parse($item->estimasi_keluar)->format('Y-m-d') : '' }}" class="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-sm shadow-sm font-semibold" onchange="syncInputs('group-date-{{ $loop->parent->index }}', this.value)">
                                         </td>
                                         <td class="p-3 align-top" rowspan="{{ count($details) }}">
-                                            <select name="status_detail[]" class="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold shadow-sm cursor-pointer" onchange="syncInputs('group-status-{{ $loop->parent->index }}', this.value)">
+                                            <span class="sm:hidden text-xs font-bold text-gray-500 uppercase mb-1 block">Status</span>
+                                            <select name="status_detail[]" class="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold shadow-sm cursor-pointer" onchange="syncInputs('group-status-{{ $loop->parent->index }}', this.value)">
                                                 @foreach(['Proses','Selesai','Diambil'] as $s) <option value="{{ $s }}" {{ $item->status == $s ? 'selected' : '' }}>{{ $s }}</option> @endforeach
                                             </select>
                                         </td>
                                         <td class="p-3 align-top" rowspan="{{ count($details) }}">
+                                            <span class="sm:hidden text-xs font-bold text-gray-500 uppercase mb-1 block">Harga (Rp)</span>
                                             <input type="text" name="harga[]" value="{{ number_format($groupTotalPrice, 0, ',', '.') }}" class="input-harga w-full px-3 py-2 text-right bg-white border border-gray-200 rounded-lg text-sm font-black text-gray-900 shadow-sm" oninput="formatRupiahInput(this); document.querySelector('#main-app').__x.$data.calculateUI()">
                                         </td>
                                         @else
@@ -399,16 +445,16 @@
                         {{-- TOMBOL AKSI BAWAH --}}
                         <div class="mt-8 flex flex-col sm:flex-row justify-between items-center gap-3 pt-6 border-t border-gray-100">
                             {{-- Tombol Hapus (Kiri di Desktop, Atas di HP) --}}
-                            <div class="w-full sm:w-auto order-last sm:order-first">
-                                <button type="button" onclick="deleteSelectedItems()" class="mobile-full-btn inline-flex justify-center items-center px-6 py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl font-bold text-sm hover:bg-red-600 hover:text-white shadow-sm transition-all w-full sm:w-auto">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>Hapus Terpilih
+                            <div class="w-full sm:w-auto sm:order-first">
+                                <button type="button" onclick="deleteSelectedItems()" class="mobile-full-btn inline-flex justify-center items-center px-6 py-3 bg-red-600 text-white border border-transparent rounded-xl font-bold text-sm hover:bg-red-700 shadow-sm transition-all w-full sm:w-auto">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>Hapus
                                 </button>
                             </div>
                             
                             {{-- Kelompok Tombol Utama --}}
                             <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                                <button type="button" onclick="window.updateOrder(false)" class="mobile-full-btn px-6 py-3 bg-white border border-gray-300 rounded-xl font-bold text-sm text-gray-700 hover:bg-gray-50 transition shadow-sm w-full sm:w-auto">
-                                    Simpan Draft
+                                <button type="button" onclick="window.updateOrder(false)" class="mobile-full-btn px-6 py-3 bg-blue-600 border border-transparent rounded-xl font-bold text-sm text-white hover:bg-blue-700 transition shadow-sm w-full sm:w-auto">
+                                    Simpan
                                 </button>
 
                                 <button type="button" onclick="window.updateOrder(true)" class="mobile-full-btn inline-flex justify-center items-center px-6 py-3 bg-gray-800 border border-transparent rounded-xl font-bold text-sm text-white hover:bg-black shadow-lg transition w-full sm:w-auto">
@@ -417,7 +463,7 @@
                                 </button>
 
                                 <template x-if="remainingBill > 0">
-                                    <button type="button" @click="if(document.querySelectorAll('input[name=\'selected_items[]\']:checked').length === 0) { alert('Harap checklist item terlebih dahulu!'); return; } window.autoUpdateStatus(); openPaymentModal()" class="mobile-full-btn inline-flex justify-center items-center px-8 py-3 bg-green-600 border border-transparent rounded-xl font-black text-sm text-white hover:bg-green-700 shadow-xl transition transform hover:scale-105 active:scale-95 w-full sm:w-auto">
+                                    <button type="button" @click="handleBayarLunas()" class="mobile-full-btn inline-flex justify-center items-center px-8 py-3 bg-green-600 border border-transparent rounded-xl font-black text-sm text-white hover:bg-green-700 shadow-xl transition transform hover:scale-105 active:scale-95 w-full sm:w-auto">
                                         BAYAR LUNAS
                                     </button>
                                 </template>
@@ -653,14 +699,6 @@
         }
 
         window.updateOrder = function(shouldPrint) {
-            let csKeluar = document.getElementById('kasir_keluar').value;
-            // VALIDASI CS KELUAR JIKA INGIN CETAK
-            if(shouldPrint && !csKeluar) { 
-                alert("Harap pilih CS Keluar (Penyerah) sebelum mencetak nota!"); 
-                document.getElementById('kasir_keluar').focus();
-                return; 
-            }
-
             let formData = $('#editOrderForm').serialize();
             $.ajax({
                 url: "{{ route('pesanan.update', $order->id) }}", type: "POST", data: formData, dataType: 'json', headers: { 'X-Requested-With': 'XMLHttpRequest' },
