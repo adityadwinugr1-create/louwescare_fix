@@ -308,3 +308,159 @@ Namun ada beberapa area yang bisa dikembangkan:
 ---
 
 *Generated: Analisis komprehensif kode program Louwes Care*
+
+---
+
+## 10. Analisis Sistem Login & Autentikasi
+
+### 10.1 Struktur Route Login
+
+**File:** `routes/auth.php`
+
+```
+guest middleware
+├── GET /login      → Tampilkan form login
+├── POST /login     → Proses autentikasi
+├── GET /register   → Tampilkan form registrasi
+├── POST /register  → Proses registrasi user baru
+├── GET /forgot-password → Lupa password
+├── POST /forgot-password → Kirim link reset
+├── GET /reset-password/{token} → Form reset password
+└── POST /reset-password → Proses reset password
+
+auth middleware
+├── GET /verify-email → Prompt verifikasi email
+├── GET /verify-email/{id}/{hash} → Verifikasi email (signed + throttle)
+├── POST /verification-notification → Kirim ulang email verifikasi
+├── GET /confirm-password → Konfirmasi password sebelum action sensitif
+├── POST /confirm-password → Proses konfirmasi password
+├── PUT /password → Update password
+└── POST /logout → Logout
+```
+
+### 10.2 Controller Autentikasi
+
+**AuthenticatedSessionController** (`app/Http/Controllers/Auth/AuthenticatedSessionController.php`)
+
+| Metode | Fungsi |
+|--------|--------|
+| `create()` | Tampilkan view login |
+| `store()` | Proses login + redirect berdasarkan role |
+| `destroy()` | Logout + invalidate session |
+
+**Logika Redirect Setelah Login:**
+```
+php
+if ($user->role === 'owner') {
+    return redirect()->intended(route('owner.dashboard'));
+}
+// Admin/Kasir
+return redirect()->intended(route('dashboard'));
+```
+
+### 10.3 Login Request Validation
+
+**File:** `app/Http/Requests/Auth/LoginRequest.php`
+
+**Validasi:**
+- `email`: required, string, email
+- `password`: required, string
+
+**Fitur Keamanan:**
+1. **Rate Limiting**: Maksimal 5 percobaan gagal
+   - Jika lebih dari 5x gagal, harus tunggu beberapa saat
+   - Pesan error: "Too many login attempts"
+
+2. **Throttle Key**: `strtolower(email)|ip_address`
+   - Mencegah brute force dari IP berbeda
+
+3. **Session Regeneration**: Setelah login berhasil, session di-regenerate untuk mencegah session fixation
+
+### 10.4 User Model & Role
+
+**File:** `app/Models/User.php`
+
+```
+php
+protected $fillable = [
+    'name',
+    'email',
+    'password',
+    'role', // 'admin' atau 'owner'
+];
+
+protected $hidden = [
+    'password',
+    'remember_token',
+];
+```
+
+**Role User:**
+| Role | Deskripsi | Redirect |
+|------|-----------|----------|
+| `owner` | Owner toko | `/owner/dashboard` |
+| `admin` | Admin/Kasir | `/dashboard` (cek-customer) |
+
+**Default Role:** `admin` (saat registrasi)
+
+### 10.5 View Login
+
+**File:** `resources/views/auth/login.blade.php`
+
+**Fitur:**
+- Input email & password
+- Checkbox "Ingat saya" (remember token)
+- Link "Lupa password?"
+- Validasi error display
+- Session status display
+
+### 10.6 Keamanan yang Sudah Baik
+
+✅ **Rate Limiting** - Maksimal 5 percobaan gagal  
+✅ **Password Hashing** - Menggunakan Laravel Hash (bcrypt)  
+✅ **Session Regeneration** - Mencegah session fixation  
+✅ **CSRF Protection** - Semua form menggunakan @csrf  
+✅ **Email Verification** - Laravel Breeze/Veryfi email  
+✅ **Signed URLs** - Verifikasi email menggunakan signed route  
+✅ **Role-based Redirect** - Owner vs Admin/Kasir  
+
+### 10.7 Potensi Perbaikan Login
+
+1. **Two-Factor Authentication (2FA)**
+   - Belum ada implementasi 2FA
+   - Bisa ditambahkan dengan Laravel Fortify
+
+2. **Login Audit Trail**
+   - Tidak ada logging percobaan login
+   - Cocok ditambahkan untuk security audit
+
+3. **Captcha**
+   - Belum ada captcha untuk login
+   - Bisa ditambahkan Google Recaptcha
+
+4. **Password Requirements**
+   - Validasi password strength belum ada
+   - Bisa ditambahkan: min 8 karakter, kombinasi huruf/angka
+
+5. **Account Lockout**
+   - Jika terlalu banyak percobaan gagal, bisa lock account sementara
+   - Saat ini hanya rate limiting
+
+---
+
+## 11. Ringkasan Keseluruhan
+
+### Kekuatan Aplikasi:
+1. ✅ Arsitektur MVC yang bersih
+2. ✅ Sistem member & point yang lengkap
+3. ✅ Integrasi WhatsApp yang baik
+4. ✅ Invoice printing support
+5. ✅ UI interaktif dengan modal
+6. ✅ Rate limiting untuk login
+7. ✅ Role-based access control
+
+### Area Perbaikan:
+1. ⚠️ Tambahkan 2FA
+2. ⚠️ Tambahkan audit trail login
+3. ⚠️ Tambahkan validasi password strength
+4. ⚠️ Unit testing
