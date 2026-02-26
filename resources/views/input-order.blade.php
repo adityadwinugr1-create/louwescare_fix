@@ -982,42 +982,46 @@
         }
         
 window.submitOrder = function() {
+    // --- LOGIKA MENCEGAH KLIK GANDA ---
+    // Ambil elemen tombol yang diklik
+    let btnSubmit = $(event.target).closest('button');
+    
+    // Jika tombol sudah berstatus 'disabled' (sedang memproses), hentikan fungsi
+    if (btnSubmit.prop('disabled')) {
+        return;
+    }
+    
+    // Simpan teks asli tombol, lalu matikan tombol dan ubah teksnya
+    let originalText = btnSubmit.text();
+    btnSubmit.prop('disabled', true).text('Memproses...');
+
     // --- 1. LOGIKA GABUNG TEKS (KATEGORI + LAYANAN + WARNA) ---
-    // Kita looping semua baris treatment, bukan cuma yang ada warnanya
     $('.treatment-row').each(function() {
         let row = $(this);
         
-        // Ambil nama Kategori
         let namaKategori = row.find('.category-select').val() || '';
         
-        // Cari Layanan mana yang dipakai (Dropdown Select atau Input Custom)
         let selectLayanan = row.find('select.treatment-select');
         let inputLayanan = row.find('input.treatment-input');
         let layananAktif = selectLayanan.is(':not(.hidden)') ? selectLayanan : inputLayanan;
         let namaLayanan = layananAktif.val() || '';
         
-        // Cari Warna (Jika input warna sedang tampil dan ada isinya)
         let containerWarna = row.find('.warna-container');
         let inputWarna = containerWarna.find('.input-warna').val() || '';
         let teksWarna = (!containerWarna.hasClass('hidden') && inputWarna.trim() !== '') ? ' - Warna: ' + inputWarna : '';
         
-        // Jika kategori dan layanan sudah diisi, kita gabungkan teksnya
         if (namaKategori !== '' && namaLayanan !== '') {
             let teksGabungan = namaKategori + ' - ' + namaLayanan + teksWarna;
             
-            // Hapus input rahasia lama jika ada (mencegah data ganda kalau tombol diklik 2x)
             row.find('.hidden-gabungan-layanan').remove();
-            
-            // Buat input rahasia baru untuk dikirim ke Laravel (database)
             row.append('<input type="hidden" class="hidden-gabungan-layanan" name="kategori_treatment[]" value="' + teksGabungan + '">');
             
-            // Matikan atribut name pada input asli agar tidak ikut terkirim ke database
             layananAktif.removeAttr('name');
         }
     });
     // --- AKHIR LOGIKA GABUNG TEKS ---
 
-    // 2. PROSES AJAX KE BACKEND
+    // --- 2. PROSES AJAX KE BACKEND ---
     let formData = $('#orderForm').serialize();
     $.ajax({
         url: "{{ route('orders.store') }}", 
@@ -1026,8 +1030,11 @@ window.submitOrder = function() {
         dataType: 'json', 
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         success: function(response) {
+            // Aktifkan kembali tombol setelah sukses (jika modal tertutup/direfresh)
+            btnSubmit.prop('disabled', false).text(originalText);
+
             if(response.status === 'success') {
-                populateInvoice(response); // Invoice otomatis baca teks yang sudah digabung!
+                populateInvoice(response); // Invoice otomatis baca teks yang sudah digabung
                 window.closePaymentModal();
                 document.getElementById('modal-invoice').style.display = 'flex';
                 document.getElementById('modal-invoice').classList.remove('hidden');
@@ -1037,6 +1044,9 @@ window.submitOrder = function() {
             }
         },
         error: function(xhr) { 
+            // PENTING: Aktifkan kembali tombol jika error agar user bisa memperbaikinya dan klik lagi
+            btnSubmit.prop('disabled', false).text(originalText);
+            
             alert("Gagal menyimpan: " + (xhr.responseJSON ? xhr.responseJSON.message : xhr.responseText)); 
         }
     });

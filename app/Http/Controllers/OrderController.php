@@ -343,8 +343,22 @@ class OrderController extends Controller
                 }
             }
 
-            $count = Order::count() + 1;
-            $invoice = 'INV-' . date('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+            // Cari invoice terakhir yang dibuat hari ini
+            $lastOrder = Order::whereDate('created_at', now()->toDateString())
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($lastOrder) {
+                // Ambil 3 angka terakhir dari invoice terakhir, lalu tambah 1
+                // Contoh: INV-20260226-013 -> ambil '013' -> jadi 14
+                $lastNumber = (int) substr($lastOrder->no_invoice, -3);
+                $nextNumber = $lastNumber + 1;
+            } else {
+                // Jika hari ini belum ada order sama sekali
+                $nextNumber = 1;
+            }
+
+            $invoice = 'INV-' . date('Ymd') . '-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
 
             $subtotalItem = 0;
             foreach ($validIndexes as $i) {
