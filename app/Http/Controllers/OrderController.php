@@ -199,18 +199,33 @@ class OrderController extends Controller
             $subtotalItem = 0; 
 
             if ($request->has('item')) {
+                // [LOGIKA BARU]: Ingat data lama sebelum dihapus
+                $oldDetails = $order->details->keyBy('nama_barang'); 
+                
                 $order->details()->delete(); 
 
                 foreach ($request->item as $key => $namaBarang) {
                     if (!empty($namaBarang)) {
                         $harga = (int) preg_replace('/[^0-9]/', '', $request->harga[$key] ?? 0);
+                        $statusDetail = $request->status_detail[$key] ?? 'Proses';
+
+                        // [LOGIKA BARU]: Cek jam diambil
+                        $oldItem = $oldDetails->get($namaBarang);
+                        $waktuDiambil = $oldItem ? $oldItem->waktu_diambil : null;
+
+                        if ($statusDetail == 'Diambil' && is_null($waktuDiambil)) {
+                            $waktuDiambil = now(); // Catat jam sekarang jika statusnya Diambil
+                        } elseif ($statusDetail != 'Diambil') {
+                            $waktuDiambil = null; // Hapus jam jika status dikembalikan ke Proses/Selesai
+                        }
 
                         $order->details()->create([
                             'order_id'        => $order->id,
                             'nama_barang'     => $namaBarang,
                             'layanan'         => $request->kategori_treatment[$key] ?? '-',
                             'estimasi_keluar' => $request->tanggal_keluar[$key] ?? null,
-                            'status'          => $request->status_detail[$key] ?? 'Proses',
+                            'status'          => $statusDetail,
+                            'waktu_diambil'   => $waktuDiambil, // <--- SIMPAN JAMNYA
                             'harga'           => $harga,
                             'catatan'         => $request->catatan_detail[$key] ?? null,
                         ]);
@@ -220,11 +235,13 @@ class OrderController extends Controller
                 $order->total_harga = max(0, $subtotalItem - $staticDiscount);
                 $order->save();
             } else {
+                // ... (biarkan bagian else seperti aslinya)
                 $subtotalItem = $order->details->sum('harga');
                 $order->total_harga = max(0, $subtotalItem - $staticDiscount);
                 $order->save();
             }
 
+            // --- D. LOGIKA OTOMATIS STATUS ORDER ---
             // --- D. LOGIKA OTOMATIS STATUS ORDER ---
             $totalDetails = $order->details()->count();
             $unfinishedItems = $order->details()->whereNotIn('status', ['Selesai', 'Diambil'])->count();
@@ -235,8 +252,16 @@ class OrderController extends Controller
                     $order->status_order = 'Proses';
                 } elseif ($pickedUpItems == $totalDetails) {
                     $order->status_order = 'Diambil';
+                    
+                    // [LOGIKA BARU]: Catat jam saat ini jika waktu_diambil masih kosong
+                    if (is_null($order->waktu_diambil)) {
+                        $order->waktu_diambil = now();
+                    }
                 } else {
                     $order->status_order = 'Selesai';
+                    
+                    // Jika dikembalikan ke selesai (batal diambil), hapus waktu diambilnya
+                    $order->waktu_diambil = null;
                 }
                 $order->save(); 
             }
@@ -424,7 +449,7 @@ class OrderController extends Controller
 
             if ($customer->member) {
                 $customer->member->increment('total_transaksi', $subtotalItem);
-                $poinBaru = floor($subtotalItem / 50000);
+                $poinBaru = $subtotalItem / 50000;
                 if ($poinBaru > 0) {
                     $customer->member->increment('poin', $poinBaru);
                     PointHistory::create([
@@ -504,7 +529,7 @@ class OrderController extends Controller
                     $infoBayar = "Status Pembayaran: *DP (Rp {$dp})*\nSisa Tagihan: *Rp {$sisa}*";
                 }
 
-                $msg = "Halo Kak *{$customer->nama}*,\n";
+                $msg = "Halo *{$customer->nama}*,\n";
                 $msg .= "No Nota: *{$order->no_invoice}*\n";
                 $msg .= "\n{$detailsList}\n\n";
                 $msg .= "Total Harga: *Rp {$total}*\n";
@@ -542,7 +567,7 @@ class OrderController extends Controller
                     $infoBayar = "Status Pembayaran: *DP (Rp {$dp})*\nSisa Tagihan: *Rp {$sisa}*";
                 }
                 
-                $msg = "Halo Kak *{$customer->nama}*,\n";
+                $msg = "Halo *{$customer->nama}*,\n";
                 
                 // LOGIKA PESAN DINAMIS (PARSIAL VS FULL)
                 if ($pickedUpCount > 0) {

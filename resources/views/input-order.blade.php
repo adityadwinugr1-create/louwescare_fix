@@ -200,7 +200,7 @@
                     <div id="box-point" class="bg-[#E0E0E0] rounded-lg p-2 px-4 flex items-center gap-4 hover:shadow-md transition w-fit border border-gray-300 {{ ($is_member ?? false) ? '' : 'hidden' }}">
                         <div class="flex flex-col border-r border-gray-400 pr-4">
                             <label class="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Point</label>
-                            <span id="poin-text" class="text-gray-800 font-black text-base leading-none">{{ $poin ?? 0 }}/8</span>
+                            <span id="poin-text" class="text-gray-800 font-black text-base leading-none">{{ floor($poin ?? 0) }}/8</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <button type="button" id="btn-claim" onclick="window.openClaimModal()" class="bg-blue-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-md shadow-sm hover:bg-blue-700 transition {{ ($poin ?? 0) >= 8 ? '' : 'hidden' }}">CLAIM</button>
@@ -759,7 +759,7 @@
                         let colorClass = badgeText === 'Member' ? 'text-pink-600 bg-pink-100 border-pink-200' : 'text-green-600 bg-green-100 border-green-200';
                         $('#badge-status').text(badgeText).attr('class', 'text-sm md:text-xl font-bold px-3 py-1 rounded-full border whitespace-nowrap m-0 ' + colorClass);
 
-                        $('#poin-text').text(response.poin + '/8 pts');
+                        $('#poin-text').text(Math.floor(response.poin) + '/8 pts');
                         if(badgeText === 'Member') {
                             $('#box-point').removeClass('hidden');
                             $('#btn-daftar-member').addClass('hidden');
