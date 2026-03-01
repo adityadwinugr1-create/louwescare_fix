@@ -125,7 +125,7 @@
                                         @foreach($treatments->pluck('kategori')->unique()->values() as $kategori)
                                             @if(!empty($kategori))<option value="{{ $kategori }}">{{ $kategori }}</option>@endif
                                         @endforeach
-                                        <option value="Custom" class="font-bold text-blue-600">+ Custom (Manual)</option>
+                                        <option value="Lainnya" class="font-bold text-blue-600">+ Lainnya (Manual)</option>
                                     </select>
                                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
                                         <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
@@ -851,7 +851,7 @@
                     // Perbaikan Validasi: Cek input manual jika kategori Custom
                     let serviceSelect = row.querySelector('.treatment-select');
                     let serviceInput = row.querySelector('.treatment-input');
-                    let service = (category === 'Custom') ? serviceInput.value.trim() : serviceSelect.value;
+                    let service = (category === 'Lainnya') ? serviceInput.value.trim() : serviceSelect.value;
 
                     let price = row.querySelector('.harga-input').value.trim();
 
@@ -1296,7 +1296,7 @@ window.filterTreatments = function(categorySelect) {
     }
 
     // 3. Logika bawaan untuk Dropdown/Custom
-    if (selectedCategory === 'Custom') {
+    if (selectedCategory === 'Lainnya') {
         treatmentSelect.classList.add('hidden'); treatmentSelect.disabled = true;
         treatmentInput.classList.remove('hidden'); treatmentInput.disabled = false; treatmentInput.focus();
         if(chevron) chevron.classList.add('hidden');

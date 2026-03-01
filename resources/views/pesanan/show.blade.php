@@ -161,19 +161,6 @@
             },
 
             handleBayarLunas() {
-                let csKeluar = document.getElementById('kasir_keluar').value;
-                if (!csKeluar) {
-                    alert('Harap pilih CS Keluar (Penyerah) terlebih dahulu!');
-                    document.getElementById('kasir_keluar').focus();
-                    return;
-                }
-
-                if (document.querySelectorAll('input[name=\'selected_items[]\']:checked').length === 0) {
-                    alert('Harap checklist item terlebih dahulu!');
-                    return;
-                }
-
-                window.autoUpdateStatus();
                 this.openPaymentModal();
             },
             
@@ -354,15 +341,15 @@
                                                     $kategori = trim($partsLayanan[0]);
                                                     $namaLayanan = trim($partsLayanan[1]);
                                                 } else {
-                                                    $kategori = 'Custom';
+                                                    $kategori = 'Lainnya';
                                                     $namaLayanan = trim($layananTanpaWarna);
                                                 }
                                                 
                                                 $isRepaint = (stripos($kategori, 'repaint') !== false || stripos($kategori, 'cat') !== false);
                                                 $kategoriList = $treatments->pluck('kategori')->unique()->filter()->values();
                                                 
-                                                if ($kategori !== 'Custom' && !$kategoriList->contains($kategori)) {
-                                                    $kategori = 'Custom';
+                                                if ($kategori !== 'Lainnya' && !$kategoriList->contains($kategori)) {
+                                                    $kategori = 'Lainnya';
                                                     $namaLayanan = $layananTanpaWarna; 
                                                 }
                                             @endphp
@@ -375,13 +362,13 @@
                                                     @foreach($kategoriList as $kat)
                                                         <option value="{{ $kat }}" {{ $kategori == $kat ? 'selected' : '' }}>{{ $kat }}</option>
                                                     @endforeach
-                                                    <option value="Custom" {{ $kategori == 'Custom' ? 'selected' : '' }}>+ Custom (Manual)</option>
+                                                    <option value="Lainnya" {{ $kategori == 'Lainnya' ? 'selected' : '' }}>+ Lainnya (Manual)</option>
                                                 </select>
 
                                                 {{-- 3. DROPDOWN / INPUT LAYANAN --}}
-                                                <select class="treatment-select w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-900 focus:border-blue-500 cursor-pointer shadow-sm {{ $kategori == 'Custom' ? 'hidden' : '' }}" onchange="updateHiddenLayanan(this)">
+                                                <select class="treatment-select w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-900 focus:border-blue-500 cursor-pointer shadow-sm {{ $kategori == 'Lainnya' ? 'hidden' : '' }}" onchange="updateHiddenLayanan(this)">
                                                     <option value="">Pilih Layanan</option>
-                                                    @if($kategori !== 'Custom')
+                                                    @if($kategori !== 'Lainnya')
                                                         @foreach($treatments->where('kategori', $kategori) as $t)
                                                             <option value="{{ $t->nama_treatment }}" {{ $namaLayanan == $t->nama_treatment ? 'selected' : '' }}>{{ $t->nama_treatment }}</option>
                                                         @endforeach
@@ -389,7 +376,7 @@
                                                 </select>
                                                 
                                                 {{-- Input Manual jika Custom --}}
-                                                <input type="text" class="treatment-input w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-900 focus:border-blue-500 shadow-sm {{ $kategori == 'Custom' ? '' : 'hidden' }}" placeholder="Ketik layanan manual..." value="{{ $kategori == 'Custom' ? $namaLayanan : '' }}" oninput="updateHiddenLayanan(this)" {{ $kategori == 'Custom' ? '' : 'disabled' }}>
+                                                <input type="text" class="treatment-input w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-900 focus:border-blue-500 shadow-sm {{ $kategori == 'Lainnya' ? '' : 'hidden' }}" placeholder="Ketik layanan manual..." value="{{ $kategori == 'Lainnya' ? $namaLayanan : '' }}" oninput="updateHiddenLayanan(this)" {{ $kategori == 'Lainnya' ? '' : 'disabled' }}>
 
                                                 {{-- 4. INPUT WARNA --}}
                                                 <input type="text" class="input-warna w-full px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm font-bold text-gray-900 focus:border-yellow-400 shadow-sm {{ $isRepaint ? '' : 'hidden' }}" placeholder="Warna (cth: Merah)" value="{{ $warna }}" oninput="updateHiddenLayanan(this)">
@@ -936,7 +923,7 @@
                 warnaInput.value = ''; 
             }
 
-            if (selectedCategory === 'Custom') {
+            if (selectedCategory === 'Lainnya') {
                 treatmentSelect.classList.add('hidden'); treatmentSelect.disabled = true;
                 treatmentInput.classList.remove('hidden'); treatmentInput.disabled = false;
                 treatmentInput.value = '';
@@ -968,7 +955,7 @@
             const hiddenInput = wrapper.querySelector('.hidden-kategori-treatment');
 
             let kategori = categorySelect.value;
-            let layanan = (kategori === 'Custom') ? treatmentInput.value : treatmentSelect.value;
+            let layanan = (kategori === 'Lainnya') ? treatmentInput.value : treatmentSelect.value;
             let warna = (!warnaInput.classList.contains('hidden') && warnaInput.value.trim() !== '') ? ' - Warna: ' + warnaInput.value : '';
 
             if (kategori && layanan) {
