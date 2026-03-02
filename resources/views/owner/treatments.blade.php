@@ -73,7 +73,32 @@
                 
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Kategori Layanan</label>
-                    <input type="text" name="kategori" id="input-kategori" class="w-full border-gray-300 rounded-lg focus:ring-[#3b66ff] focus:border-[#3b66ff] placeholder-gray-400" placeholder="Cth: Deep Clean / Unyellowing" required>
+                    
+                    {{-- Dropdown Kategori Utama --}}
+                    <select id="select-kategori" name="kategori" class="w-full border-gray-300 rounded-lg focus:ring-[#3b66ff] focus:border-[#3b66ff] cursor-pointer" onchange="toggleKategoriBaru()" required>
+                        <option value="" disabled selected>-- Pilih Kategori --</option>
+                        @php 
+                            $kategoriUnik = $treatments->pluck('kategori')->unique(); 
+                        @endphp
+                        
+                        @foreach($kategoriUnik as $kat)
+                            <option value="{{ $kat }}">{{ $kat }}</option>
+                        @endforeach
+                        
+                        <option disabled>──────────</option>
+                        <option value="TAMBAH_BARU" class="font-bold text-blue-600 bg-blue-50">+ Buat Kategori Baru...</option>
+                    </select>
+
+                    {{-- Input Text (Muncul jika pilih "+ Buat Kategori Baru...") --}}
+                    <div id="container-kategori-baru" class="mt-2 hidden flex-row gap-2">
+                        <input type="text" id="input-kategori" class="w-full border-gray-300 rounded-lg focus:ring-[#3b66ff] focus:border-[#3b66ff] placeholder-gray-400 text-sm" placeholder="Ketik nama kategori baru disini...">
+                        
+                        {{-- Tombol Batal yang lebih jelas, responsif, dan diletakkan bersebelahan --}}
+                        <button type="button" onclick="batalKategoriBaru()" class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg font-bold text-sm transition shadow-sm whitespace-nowrap flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            Batal
+                        </button>
+                    </div>
                 </div>
 
                 <div>
@@ -97,6 +122,49 @@
         const form = document.getElementById('form-treatment');
         const title = document.getElementById('modal-title');
         const methodField = document.getElementById('method-field');
+        
+        // Element Kategori
+        const selectKategori = document.getElementById('select-kategori');
+        const containerKategoriBaru = document.getElementById('container-kategori-baru');
+        const inputKategori = document.getElementById('input-kategori');
+
+        // Fungsi untuk mengontrol perpindahan input kategori
+        // Fungsi untuk mengontrol perpindahan input kategori
+        function toggleKategoriBaru() {
+            if (selectKategori.value === 'TAMBAH_BARU') {
+                // Tampilkan input text (ganti menggunakan flex agar sejajar)
+                containerKategoriBaru.classList.remove('hidden');
+                containerKategoriBaru.classList.add('flex'); // Tambahan baru
+                
+                // Pindahkan atribut 'name' dan 'required' agar Laravel membaca input text ini
+                inputKategori.setAttribute('name', 'kategori');
+                inputKategori.setAttribute('required', 'required');
+                
+                // Cabut 'name' dari select agar tidak bentrok
+                selectKategori.removeAttribute('name');
+                selectKategori.removeAttribute('required');
+                
+                inputKategori.focus();
+            } else {
+                // Sembunyikan input text
+                containerKategoriBaru.classList.add('hidden');
+                containerKategoriBaru.classList.remove('flex'); // Tambahan baru
+                
+                // Kembalikan atribut 'name' ke select
+                inputKategori.removeAttribute('name');
+                inputKategori.removeAttribute('required');
+                inputKategori.value = ''; 
+                
+                selectKategori.setAttribute('name', 'kategori');
+                selectKategori.setAttribute('required', 'required');
+            }
+        }
+
+        // Fungsi jika user batal membuat kategori baru
+        function batalKategoriBaru() {
+            selectKategori.value = ""; // Reset dropdown ke opsi "-- Pilih Kategori --"
+            toggleKategoriBaru();      // Jalankan fungsi sembunyikan input text
+        }
 
         function openModal(type) {
             modal.classList.remove('hidden');
@@ -105,19 +173,23 @@
                 form.action = "{{ route('owner.treatments.store') }}";
                 methodField.innerHTML = "";
                 form.reset();
+                
+                // Reset form kategori UI ke mode normal
+                selectKategori.value = "";
+                toggleKategoriBaru();
             }
         }
 
         function editTreatment(data) {
             modal.classList.remove('hidden');
             title.innerText = "Edit Treatment";
-            // Set URL Action untuk Update
             form.action = `/owner/treatments/${data.id}`;
-            // Tambahkan spoofing method PUT untuk Laravel
             methodField.innerHTML = `<input type="hidden" name="_method" value="PUT">`;
             
-            // Isi data ke input field
-            document.getElementById('input-kategori').value = data.kategori;
+            // Set value ke dropdown
+            selectKategori.value = data.kategori;
+            toggleKategoriBaru(); // Pastikan input text mode "baru" tersembunyi
+            
             document.getElementById('input-nama').value = data.nama_treatment;
         }
 

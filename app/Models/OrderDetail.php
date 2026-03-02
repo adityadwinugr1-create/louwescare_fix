@@ -17,6 +17,11 @@ class OrderDetail extends Model
         'estimasi_keluar', // <--- WAJIB DITAMBAHKAN
         'catatan',        // <--- WAJIB DITAMBAHKAN
         'status',
+        'waktu_diambil',
+    ];
+
+    protected $casts = [
+        'waktu_diambil' => 'datetime',
     ];
 
     // Relasi balik ke Order Utama

@@ -179,13 +179,17 @@ class DashboardController extends Controller
         }
 
         // D. Treatment
+        // D. Treatment
         if ($request->filled('treatment')) {
             $query->whereHas('details', function($q) use ($request) {
-                // Pastikan input berupa array. Jika bukan, jadikan array.
                 $treatments = is_array($request->treatment) ? $request->treatment : [$request->treatment];
                 
-                // Gunakan whereIn untuk memfilter lebih dari satu treatment sekaligus
-                $q->whereIn('layanan', $treatments);
+                // Gunakan orWhere LIKE agar lebih fleksibel (mengatasi spasi berlebih atau treatment gabungan koma)
+                $q->where(function ($subQuery) use ($treatments) {
+                    foreach ($treatments as $t) {
+                        $subQuery->orWhere('layanan', 'LIKE', '%' . trim($t) . '%');
+                    }
+                });
             });
         }
 

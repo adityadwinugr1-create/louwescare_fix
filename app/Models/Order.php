@@ -20,6 +20,7 @@ class Order extends Model
         'status_pembayaran',
         'metode_pembayaran',  // <--- WAJIB DITAMBAHKAN
         'status_order',
+        'waktu_diambil',
         'tipe_customer',
         'sumber_info',
         'catatan',

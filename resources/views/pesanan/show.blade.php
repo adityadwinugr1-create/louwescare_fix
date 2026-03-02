@@ -6,7 +6,7 @@
         .invoice-area { font-family: 'Helvetica', 'Arial', sans-serif; }
         .dashed-line { border-bottom: 1px dashed #000; }
         .thick-line { border-bottom: 2px solid #000; }
-        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        /* select { -webkit-appearance: none; -moz-appearance: none; appearance: none; } */
         .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -161,19 +161,6 @@
             },
 
             handleBayarLunas() {
-                let csKeluar = document.getElementById('kasir_keluar').value;
-                if (!csKeluar) {
-                    alert('Harap pilih CS Keluar (Penyerah) terlebih dahulu!');
-                    document.getElementById('kasir_keluar').focus();
-                    return;
-                }
-
-                if (document.querySelectorAll('input[name=\'selected_items[]\']:checked').length === 0) {
-                    alert('Harap checklist item terlebih dahulu!');
-                    return;
-                }
-
-                window.autoUpdateStatus();
                 this.openPaymentModal();
             },
             
@@ -311,10 +298,10 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-4 py-4 text-center font-bold text-gray-600 w-[5%]"><input type="checkbox" onclick="toggleSelectAll(this)" class="w-5 h-5 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"></th>
-                                        <th class="px-4 py-4 text-left font-bold text-gray-600 w-[30%]">Item / Barang</th>
+                                        <th class="px-4 py-4 text-left font-bold text-gray-600 w-[25%]">Item / Barang</th>
                                         <th class="px-4 py-4 text-left font-bold text-gray-600 w-1/4">Layanan</th>
                                         <th class="px-4 py-4 text-left font-bold text-gray-600 w-[15%]">Est. Keluar</th>
-                                        <th class="px-4 py-4 text-center font-bold text-gray-600 w-[10%]">Status</th>
+                                        <th class="px-4 py-4 text-center font-bold text-gray-600 w-[15%]">Status</th>
                                         <th class="px-4 py-4 text-right font-bold text-gray-600 w-[15%]">Harga (Rp)</th>
                                     </tr>
                                 </thead>
@@ -354,15 +341,15 @@
                                                     $kategori = trim($partsLayanan[0]);
                                                     $namaLayanan = trim($partsLayanan[1]);
                                                 } else {
-                                                    $kategori = 'Custom';
+                                                    $kategori = 'Lainnya';
                                                     $namaLayanan = trim($layananTanpaWarna);
                                                 }
                                                 
                                                 $isRepaint = (stripos($kategori, 'repaint') !== false || stripos($kategori, 'cat') !== false);
                                                 $kategoriList = $treatments->pluck('kategori')->unique()->filter()->values();
                                                 
-                                                if ($kategori !== 'Custom' && !$kategoriList->contains($kategori)) {
-                                                    $kategori = 'Custom';
+                                                if ($kategori !== 'Lainnya' && !$kategoriList->contains($kategori)) {
+                                                    $kategori = 'Lainnya';
                                                     $namaLayanan = $layananTanpaWarna; 
                                                 }
                                             @endphp
@@ -375,13 +362,13 @@
                                                     @foreach($kategoriList as $kat)
                                                         <option value="{{ $kat }}" {{ $kategori == $kat ? 'selected' : '' }}>{{ $kat }}</option>
                                                     @endforeach
-                                                    <option value="Custom" {{ $kategori == 'Custom' ? 'selected' : '' }}>+ Custom (Manual)</option>
+                                                    <option value="Lainnya" {{ $kategori == 'Lainnya' ? 'selected' : '' }}>+ Lainnya (Manual)</option>
                                                 </select>
 
                                                 {{-- 3. DROPDOWN / INPUT LAYANAN --}}
-                                                <select class="treatment-select w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-900 focus:border-blue-500 cursor-pointer shadow-sm {{ $kategori == 'Custom' ? 'hidden' : '' }}" onchange="updateHiddenLayanan(this)">
+                                                <select class="treatment-select w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-900 focus:border-blue-500 cursor-pointer shadow-sm {{ $kategori == 'Lainnya' ? 'hidden' : '' }}" onchange="updateHiddenLayanan(this)">
                                                     <option value="">Pilih Layanan</option>
-                                                    @if($kategori !== 'Custom')
+                                                    @if($kategori !== 'Lainnya')
                                                         @foreach($treatments->where('kategori', $kategori) as $t)
                                                             <option value="{{ $t->nama_treatment }}" {{ $namaLayanan == $t->nama_treatment ? 'selected' : '' }}>{{ $t->nama_treatment }}</option>
                                                         @endforeach
@@ -389,7 +376,7 @@
                                                 </select>
                                                 
                                                 {{-- Input Manual jika Custom --}}
-                                                <input type="text" class="treatment-input w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-900 focus:border-blue-500 shadow-sm {{ $kategori == 'Custom' ? '' : 'hidden' }}" placeholder="Ketik layanan manual..." value="{{ $kategori == 'Custom' ? $namaLayanan : '' }}" oninput="updateHiddenLayanan(this)" {{ $kategori == 'Custom' ? '' : 'disabled' }}>
+                                                <input type="text" class="treatment-input w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-900 focus:border-blue-500 shadow-sm {{ $kategori == 'Lainnya' ? '' : 'hidden' }}" placeholder="Ketik layanan manual..." value="{{ $kategori == 'Lainnya' ? $namaLayanan : '' }}" oninput="updateHiddenLayanan(this)" {{ $kategori == 'Lainnya' ? '' : 'disabled' }}>
 
                                                 {{-- 4. INPUT WARNA --}}
                                                 <input type="text" class="input-warna w-full px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm font-bold text-gray-900 focus:border-yellow-400 shadow-sm {{ $isRepaint ? '' : 'hidden' }}" placeholder="Warna (cth: Merah)" value="{{ $warna }}" oninput="updateHiddenLayanan(this)">
@@ -406,9 +393,21 @@
                                         </td>
                                         <td class="p-3 align-top" rowspan="{{ count($details) }}">
                                             <span class="sm:hidden text-xs font-bold text-gray-500 uppercase mb-1 block">Status</span>
-                                            <select name="status_detail[]" class="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold shadow-sm cursor-pointer" onchange="syncInputs('group-status-{{ $loop->parent->index }}', this.value)">
+                                            <select name="status_detail[]" class="w-full pl-3 pr-8 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold shadow-sm cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23131313%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[position:right_10px_center] bg-no-repeat" onchange="syncInputs('group-status-{{ $loop->parent->index }}', this.value)">
                                                 @foreach(['Proses','Selesai','Diambil'] as $s) <option value="{{ $s }}" {{ $item->status == $s ? 'selected' : '' }}>{{ $s }}</option> @endforeach
                                             </select>
+
+                                            @if($item->status == 'Diambil' && $item->waktu_diambil)
+                                                    <div class="mt-2 p-1.5 bg-emerald-50 border border-emerald-200 rounded-md w-full">
+                                                        <div class="flex items-center gap-1 text-emerald-700 mb-0.5">
+                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                                            <span class="text-[10px] font-black uppercase tracking-tighter">Sudah Diambil</span>
+                                                        </div>
+                                                        <p class="text-[10px] text-emerald-600 font-medium leading-none">
+                                                            {{ \Carbon\Carbon::parse($item->waktu_diambil)->format('d/m/y - H:i') }} WIB
+                                                        </p>
+                                                    </div>
+                                                @endif
                                         </td>
                                         <td class="p-3 align-top" rowspan="{{ count($details) }}">
                                             <span class="sm:hidden text-xs font-bold text-gray-500 uppercase mb-1 block">Harga (Rp)</span>
@@ -924,7 +923,7 @@
                 warnaInput.value = ''; 
             }
 
-            if (selectedCategory === 'Custom') {
+            if (selectedCategory === 'Lainnya') {
                 treatmentSelect.classList.add('hidden'); treatmentSelect.disabled = true;
                 treatmentInput.classList.remove('hidden'); treatmentInput.disabled = false;
                 treatmentInput.value = '';
@@ -956,7 +955,7 @@
             const hiddenInput = wrapper.querySelector('.hidden-kategori-treatment');
 
             let kategori = categorySelect.value;
-            let layanan = (kategori === 'Custom') ? treatmentInput.value : treatmentSelect.value;
+            let layanan = (kategori === 'Lainnya') ? treatmentInput.value : treatmentSelect.value;
             let warna = (!warnaInput.classList.contains('hidden') && warnaInput.value.trim() !== '') ? ' - Warna: ' + warnaInput.value : '';
 
             if (kategori && layanan) {
