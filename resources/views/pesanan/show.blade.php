@@ -207,7 +207,7 @@
             
             {{-- HEADER NAVIGATION --}}
             <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <a href="{{ route('pesanan.index') }}" class="group inline-flex items-center px-5 py-2.5 bg-white border border-gray-200 rounded-xl font-bold text-sm text-gray-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all shadow-sm">
+                <a href="{{ $backUrl ?? route('pesanan.index') }}" class="group inline-flex items-center px-5 py-2.5 bg-white border border-gray-200 rounded-xl font-bold text-sm text-gray-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all shadow-sm">
                     <svg class="w-5 h-5 mr-2 text-gray-400 group-hover:text-blue-600 transition-colors group-hover:-translate-x-1 transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> Kembali
                 </a>
                 <div class="text-left sm:text-right w-full sm:w-auto bg-white sm:bg-transparent p-3 sm:p-0 rounded-xl shadow-sm sm:shadow-none border border-gray-100 sm:border-transparent">
@@ -664,7 +664,7 @@
                 </div>
                 <div class="bg-gray-100 p-4 flex gap-2 no-print border-t">
                     <button type="button" onclick="window.printInvoice()" class="flex-1 bg-gray-800 text-white py-2 rounded font-bold hover:bg-black transition">Cetak</button>
-                    <button type="button" onclick="window.location.href = '{{ route('pesanan.index') }}'" class="flex-1 bg-red-100 text-red-600 py-2 rounded font-bold hover:bg-red-200 transition">Tutup</button>
+                    <button type="button" onclick="window.location.href = '{{ $backUrl ?? route('pesanan.index') }}'" class="flex-1 bg-red-100 text-red-600 py-2 rounded font-bold hover:bg-red-200 transition">Tutup</button>
                 </div>
             </div>
         </div>
@@ -708,7 +708,7 @@
                             populateInvoice(response); 
                             document.getElementById('modal-invoice').style.display = 'flex'; 
                         } 
-                        else { window.location.href = '{{ route("pesanan.index") }}'; }
+                        else { window.location.href = '{!! $backUrl ?? route("pesanan.index") !!}'; }
                     }
                 },
                 error: function(xhr) { alert("Gagal update: " + (xhr.responseJSON ? xhr.responseJSON.message : xhr.statusText)); }

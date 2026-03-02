@@ -57,6 +57,11 @@ class OrderController extends Controller
 
         $orders = $query->paginate(10);
 
+        // Simpan URL saat ini (termasuk filter) ke session untuk tombol kembali di halaman edit
+        if (!$request->ajax()) {
+            session(['pesanan_last_url' => $request->fullUrl()]);
+        }
+
         // Ambil data treatments untuk dropdown filter
         $treatments = Treatment::orderBy('nama_treatment', 'asc')->get(); // Pastikan data diambil
 
@@ -75,7 +80,8 @@ class OrderController extends Controller
         $treatments = Treatment::orderBy('nama_treatment', 'asc')->get();
         $karyawans = Karyawan::orderBy('nama_karyawan', 'asc')->get();
         $nominalDiskon = Setting::getDiskonMember();
-        return view('pesanan.show', compact('order', 'treatments', 'karyawans', 'nominalDiskon'));
+        $backUrl = session('pesanan_last_url', route('pesanan.index'));
+        return view('pesanan.show', compact('order', 'treatments', 'karyawans', 'nominalDiskon', 'backUrl'));
     }
 
     /**
@@ -680,14 +686,49 @@ class OrderController extends Controller
             if ($firstDetail) {
                 $order = $firstDetail->order;
 
+                // 1. Hitung Subtotal SEBELUM hapus (untuk kalkulasi poin)
+                $oldSubtotal = $order->details()->sum('harga');
+
                 // Hapus item yang dipilih
                 OrderDetail::whereIn('id', $ids)->delete();
 
-                // Hitung ulang total harga order
-                $subtotal = $order->details()->sum('harga');
-                $discount = ($order->klaim === 'Diskon') ? Setting::getDiskonMember() : 0;
+                // 2. Hitung Subtotal SETELAH hapus
+                $newSubtotal = $order->details()->sum('harga');
+
+                // --- LOGIKA UPDATE POIN MEMBER (KOREKSI) ---
+                if ($order->customer && $order->customer->member) {
+                    $member = $order->customer->member;
+
+                    // Hitung poin yang didapat dari subtotal lama vs baru
+                    $oldPointsEarned = floor($oldSubtotal / 50000);
+                    $newPointsEarned = floor($newSubtotal / 50000);
+                    $pointsToRevoke = $oldPointsEarned - $newPointsEarned;
+
+                    if ($pointsToRevoke > 0) {
+                        $member->decrement('poin', $pointsToRevoke);
+                        
+                        PointHistory::create([
+                            'member_id'   => $member->id,
+                            'order_id'    => $order->id,
+                            'amount'      => -$pointsToRevoke,
+                            'type'        => 'adjustment',
+                            'description' => 'Koreksi Poin (Hapus Item)'
+                        ]);
+                    }
+                    
+                    // Update total transaksi
+                    $member->decrement('total_transaksi', ($oldSubtotal - $newSubtotal));
+                }
+
+                // Hitung ulang total harga order & Diskon
+                $qtyDiskon = 0;
+                if ($order->klaim) {
+                    if (preg_match('/(\d+)\s*x\s*Diskon/', $order->klaim, $m)) $qtyDiskon = (int)$m[1];
+                    elseif (strpos($order->klaim, 'Diskon') !== false) $qtyDiskon = 1;
+                }
+                $discount = $qtyDiskon * Setting::getDiskonMember();
                 
-                $order->total_harga = max(0, $subtotal - $discount);
+                $order->total_harga = max(0, $newSubtotal - $discount);
                 
                 // Jika status Lunas, sesuaikan paid_amount agar sinkron
                 if ($order->status_pembayaran == 'Lunas') {
