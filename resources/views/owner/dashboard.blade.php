@@ -7,7 +7,7 @@
                 <div>
                     <h2 class="font-bold text-2xl text-gray-800">Dashboard Owner</h2>
                     <span class="text-sm text-gray-500">
-                        Data Kartu: {{ now()->translatedFormat('d F Y') }} (Hari Ini)
+                        Data Kartu: {{ \Carbon\Carbon::parse($startDate)->translatedFormat('d M Y') }} - {{ \Carbon\Carbon::parse($endDate)->translatedFormat('d M Y') }}
                     </span>
                 </div>
 
@@ -68,15 +68,15 @@
                     </div>
                 </div>
 
-                {{-- 2. KARTU STATISTIK (TETAP HARI INI) --}}
+                {{-- 2. KARTU STATISTIK (TETAP HARI INI yang terbaru dan sudah di update terbaru) --}}
                 <div class="flex flex-col gap-6 h-full">
                     
                     <div class="bg-white overflow-hidden shadow-sm rounded-xl p-6 border-l-4 border-emerald-500 flex-1 flex flex-col justify-center">
                         <div class="flex justify-between items-start">
                             <div>
-                                <div class="text-gray-500 text-sm font-medium">Pendapatan <span class="font-bold text-emerald-600">Hari Ini</span></div>
+                                <div class="text-gray-500 text-sm font-medium">Pendapatan <span class="font-bold text-emerald-600">Periode Ini</span></div>
                                 <div class="text-2xl font-bold text-gray-800 mt-1">
-                                    Rp {{ number_format($pendapatanHariIni, 0, ',', '.') }}
+                                    Rp {{ number_format($pendapatanPeriode, 0, ',', '.') }}
                                 </div>
                             </div>
                             <div class="p-2 bg-emerald-100 rounded-lg text-emerald-600">
@@ -88,9 +88,9 @@
                     <div class="bg-white overflow-hidden shadow-sm rounded-xl p-6 border-l-4 border-blue-500 flex-1 flex flex-col justify-center">
                         <div class="flex justify-between items-start">
                             <div>
-                                <div class="text-gray-500 text-sm font-medium">Customer <span class="font-bold text-blue-600">Hari Ini</span></div>
+                                <div class="text-gray-500 text-sm font-medium">Customer <span class="font-bold text-blue-600">Periode Ini</span></div>
                                 <div class="text-2xl font-bold text-gray-800 mt-1">
-                                    {{ $customerHariIni }} <span class="text-sm font-normal text-gray-500">Orang</span>
+                                    {{ $customerPeriode }} <span class="text-sm font-normal text-gray-500">Orang</span>
                                 </div>
                             </div>
                             <div class="p-2 bg-blue-100 rounded-lg text-blue-600">
@@ -102,9 +102,9 @@
                     <div class="bg-white overflow-hidden shadow-sm rounded-xl p-6 border-l-4 border-purple-500 flex-1 flex flex-col justify-center">
                         <div class="flex justify-between items-start">
                             <div>
-                                <div class="text-gray-500 text-sm font-medium">Barang Masuk <span class="font-bold text-purple-600">Hari Ini</span></div>
+                                <div class="text-gray-500 text-sm font-medium">Barang Masuk <span class="font-bold text-purple-600">Periode Ini</span></div>
                                 <div class="text-2xl font-bold text-gray-800 mt-1">
-                                    {{ $barangMasukHariIni }} <span class="text-sm font-normal text-gray-500">Item</span>
+                                    {{ $barangMasukPeriode }} <span class="text-sm font-normal text-gray-500">Item</span>
                                 </div>
                             </div>
                             <div class="p-2 bg-purple-100 rounded-lg text-purple-600">

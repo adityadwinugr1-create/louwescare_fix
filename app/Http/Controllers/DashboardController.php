@@ -15,6 +15,7 @@ class DashboardController extends Controller
     /**
      * DASHBOARD UTAMA (Index)
      * Logika: Tetap menggunakan logika lama Anda (Total Harga & Filter Mingguan/Harian)
+     * ini update terbaru sudah bisa munculkan data sesuai filter yang dipilih (Harian/Bulanan/Custom Range)
      */
     public function index(Request $request)
     {
@@ -23,13 +24,7 @@ class DashboardController extends Controller
             return redirect()->route('dashboard');
         }
 
-        // === A. DATA KARTU (SELALU HARI INI) ===
-        $pendapatanHariIni = Order::whereDate('created_at', today())->sum('total_harga');
-        $customerHariIni = Order::whereDate('created_at', today())->count();
-        $barangMasukHariIni = OrderDetail::whereDate('created_at', today())->count();
-        
-        // [TAMBAHAN] Data Bulan & Tahun Ini (Untuk melengkapi tampilan dashboard jika diperlukan)
-        // Saya tetap gunakan 'total_harga' agar konsisten dengan logika Anda
+        // [TAMBAHAN] Data Bulan & Tahun Ini (Opsional jika masih dipakai)
         $incomeMonth = Order::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('total_harga');
         $incomeYear  = Order::whereYear('created_at', now()->year)->sum('total_harga');
 
@@ -40,35 +35,31 @@ class DashboardController extends Controller
         $chartValues = [];
         $startDate = null;
         $endDate = null;
+        
+        // Inisialisasi variabel batas waktu pencarian
+        $startQuery = null;
+        $endQuery = null;
 
         if ($filterType === 'bulanan') {
-            // === LOGIKA FILTER BULANAN (TAMPILKAN 4 MINGGU) ===
+            // === LOGIKA FILTER BULANAN ===
             $bulanInput = $request->input('bulan', now()->format('Y-m'));
             
-            $start = Carbon::parse($bulanInput)->startOfMonth();
-            $end = Carbon::parse($bulanInput)->endOfMonth();
+            $startQuery = Carbon::parse($bulanInput)->startOfMonth();
+            $endQuery = Carbon::parse($bulanInput)->endOfMonth();
             
-            $startDate = $start->format('Y-m-d');
-            $endDate = $end->format('Y-m-d');
+            $startDate = $startQuery->format('Y-m-d');
+            $endDate = $endQuery->format('Y-m-d');
 
-            $ordersInMonth = Order::whereBetween('created_at', [$start, $end])->get();
+            $ordersInMonth = Order::whereBetween('created_at', [$startQuery, $endQuery])->get();
 
-            // Siapkan 4 Bucket Minggu
             $weeklyData = [1 => 0, 2 => 0, 3 => 0, 4 => 0];
 
             foreach ($ordersInMonth as $order) {
                 $day = $order->created_at->day;
-                
-                // Kelompokkan tanggal 1-31 ke dalam 4 minggu
-                if ($day <= 7) {
-                    $week = 1;
-                } elseif ($day <= 14) {
-                    $week = 2;
-                } elseif ($day <= 21) {
-                    $week = 3;
-                } else {
-                    $week = 4; 
-                }
+                if ($day <= 7) $week = 1;
+                elseif ($day <= 14) $week = 2;
+                elseif ($day <= 21) $week = 3;
+                else $week = 4; 
                 
                 $weeklyData[$week] += $order->total_harga;
             }
@@ -83,14 +74,14 @@ class DashboardController extends Controller
             $startDate = $request->input('start_date', now()->subDays(6)->format('Y-m-d'));
             $endDate = $request->input('end_date', now()->format('Y-m-d'));
 
-            $start = Carbon::parse($startDate)->startOfDay();
-            $end = Carbon::parse($endDate)->endOfDay();
+            $startQuery = Carbon::parse($startDate)->startOfDay();
+            $endQuery = Carbon::parse($endDate)->endOfDay();
 
             $rawGrafikData = Order::select(
                 DB::raw('DATE(created_at) as date'), 
                 DB::raw('SUM(total_harga) as total')
             )
-            ->whereBetween('created_at', [$start, $end])
+            ->whereBetween('created_at', [$startQuery, $endQuery])
             ->groupBy('date')
             ->get();
 
@@ -105,30 +96,35 @@ class DashboardController extends Controller
             }
         }
 
+        // === A. DATA KARTU (DINAMIS SESUAI FILTER) ===
+        // Menggunakan $startQuery dan $endQuery dari filter di atas
+        $pendapatanPeriode = Order::whereBetween('created_at', [$startQuery, $endQuery])->sum('total_harga');
+        $customerPeriode = Order::whereBetween('created_at', [$startQuery, $endQuery])->count();
+        $barangMasukPeriode = OrderDetail::whereBetween('created_at', [$startQuery, $endQuery])->count();
+
         // === C. LIST ORDER ===
         $recentOrders = Order::with('customer')
-            ->whereBetween('created_at', [Carbon::parse($startDate)->startOfDay(), Carbon::parse($endDate)->endOfDay()])
+            ->whereBetween('created_at', [$startQuery, $endQuery])
             ->latest()
             ->get();
 
         // Mengirim data ke View Dashboard
         return view('owner.dashboard', compact(
-            'pendapatanHariIni', 
-            'incomeMonth',  // Tambahan
-            'incomeYear',   // Tambahan
-            'customerHariIni', 
-            'barangMasukHariIni',
-            'chartLabels', // Variable untuk grafik (Label)
-            'chartValues', // Variable untuk grafik (Data)
+            'pendapatanPeriode', // Variabel baru
+            'customerPeriode',   // Variabel baru
+            'barangMasukPeriode',// Variabel baru
+            'incomeMonth',
+            'incomeYear',
+            'chartLabels',
+            'chartValues',
             'recentOrders',
             'startDate',
             'endDate',
             'filterType'
         ))
-        // [OPSIONAL] Mapping agar cocok dengan view 'laporan' jika dipakai di dashboard juga
         ->with('labels', $chartLabels)
         ->with('data', $chartValues)
-        ->with('incomeToday', $pendapatanHariIni); 
+        ->with('incomeToday', $pendapatanPeriode); 
     }
 
     /**
