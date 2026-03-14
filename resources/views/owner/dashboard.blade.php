@@ -49,7 +49,7 @@
                 </form>
             </div>
 
-            {{-- LAYOUT UTAMA --}}
+            {{-- LAYOUT ASLI: Grafik 2/3 + Stats 1/3 --}}
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {{-- 1. GRAFIK --}}
@@ -68,7 +68,7 @@
                     </div>
                 </div>
 
-                {{-- 2. KARTU STATISTIK (TETAP HARI INI yang terbaru dan sudah di update terbaru) --}}
+                {{-- 2. KARTU STATISTIK --}}
                 <div class="flex flex-col gap-6 h-full">
                     
                     <div class="bg-white overflow-hidden shadow-sm rounded-xl p-6 border-l-4 border-emerald-500 flex-1 flex flex-col justify-center">
@@ -114,6 +114,57 @@
                     </div>
 
                 </div>
+            </div>
+
+            {{-- 2. RESPONSIF BREAKDOWN METODE PEMBAYARAN + GARIS --}}
+            <div class="space-y-4">
+                {{-- Cards Stack Mobile, Row Desktop --}}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl p-6 border-l-4 border-green-500 lg:border-r border-r-gray-200 flex flex-col justify-center group hover:shadow-md transition-all">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="text-gray-500 text-sm font-medium mb-1">Tunai</div>
+                                <div class="text-xl sm:text-2xl font-black text-green-600">
+                                    Rp {{ number_format($tunai, 0, ',', '.') }}
+                                </div>
+                            </div>
+                            <div class="p-2 bg-green-100 rounded-lg text-green-600 group-hover:scale-110 transition-transform">
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-4a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl p-6 border-l-4 border-blue-500 lg:border-r border-r-gray-200 flex flex-col justify-center group hover:shadow-md transition-all">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="text-gray-500 text-sm font-medium mb-1">Transfer</div>
+                                <div class="text-xl sm:text-2xl font-black text-blue-600">
+                                    Rp {{ number_format($transfer, 0, ',', '.') }}
+                                </div>
+                            </div>
+                            <div class="p-2 bg-blue-100 rounded-lg text-blue-600 group-hover:scale-110 transition-transform">
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl p-6 border-l-4 border-purple-500 flex flex-col justify-center group hover:shadow-md transition-all">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="text-gray-500 text-sm font-medium mb-1">QRIS</div>
+                                <div class="text-xl sm:text-2xl font-black text-purple-600">
+                                    Rp {{ number_format($qris, 0, ',', '.') }}
+                                </div>
+                            </div>
+                            <div class="p-2 bg-purple-100 rounded-lg text-purple-600 group-hover:scale-110 transition-transform">
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {{-- RESPONSIVE HORIZONTAL DIVIDER --}}
+                <div class="border-t border-gray-200 pt-8"></div>
             </div>
 
             {{-- 3. TABEL ORDER --}}

@@ -131,7 +131,8 @@ class OrderController extends Controller
             // 3. Hitung Selisih (Diff) untuk Penyesuaian Poin
             $diffDiskon = $targetDiskon - $existingDiskon;
             $diffParfum = $targetParfum - $existingParfum;
-            $pointsNeeded = ($diffDiskon + $diffParfum) * 8;
+$pointsNeeded = ($diffDiskon + $diffParfum) * 8;
+
 
             $member = $order->customer->member;
 
@@ -350,7 +351,8 @@ class OrderController extends Controller
 
             $qtyDiskon = $request->filled('claim_diskon_qty') ? (int)$request->claim_diskon_qty : 0;
             $qtyParfum = $request->filled('claim_parfum_qty') ? (int)$request->claim_parfum_qty : 0;
-            $totalPointsNeeded = ($qtyDiskon + $qtyParfum) * 8;
+$totalPointsNeeded = ($qtyDiskon + $qtyParfum) * 8;
+
 
             if ($totalPointsNeeded > 0) {
                 // Validasi: Pastikan poin cukup (Kelipatan 8)
@@ -455,7 +457,8 @@ class OrderController extends Controller
 
             if ($customer->member) {
                 $customer->member->increment('total_transaksi', $subtotalItem);
-                $poinBaru = $subtotalItem / 50000;
+$poinBaru = floor($finalTotal / 50000);
+
                 if ($poinBaru > 0) {
                     $customer->member->increment('poin', $poinBaru);
                     PointHistory::create([
@@ -463,7 +466,7 @@ class OrderController extends Controller
                         'order_id'    => $order->id,
                         'amount'      => $poinBaru,
                         'type'        => 'earn',
-                        'description' => 'Poin Transaksi ' . $invoice
+                        'description' => 'Poin Transaksi ' . $invoice . ' (setelah diskon)'
                     ]);
                 }
             }
@@ -725,8 +728,11 @@ class OrderController extends Controller
                     $member = $order->customer->member;
 
                     // Hitung poin yang didapat dari subtotal lama vs baru
-                    $oldPointsEarned = floor($oldSubtotal / 50000);
-                    $newPointsEarned = floor($newSubtotal / 50000);
+                    // Revoke berdasarkan total_harga lama vs baru (net after discount)
+                    $oldTotalHarga = $order->getOriginal('total_harga');
+                    $newTotalHarga = max(0, $newSubtotal - $discount);
+                    $oldPointsEarned = floor($oldTotalHarga / 50000);
+                    $newPointsEarned = floor($newTotalHarga / 50000);
                     $pointsToRevoke = $oldPointsEarned - $newPointsEarned;
 
                     if ($pointsToRevoke > 0) {

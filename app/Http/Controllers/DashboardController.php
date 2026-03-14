@@ -102,6 +102,18 @@ class DashboardController extends Controller
         $customerPeriode = Order::whereBetween('created_at', [$startQuery, $endQuery])->count();
         $barangMasukPeriode = OrderDetail::whereBetween('created_at', [$startQuery, $endQuery])->count();
 
+        // === C. METODE PEMBAYARAN BREAKDOWN ===
+        $paymentBreakdown = Order::select(DB::raw('metode_pembayaran, SUM(paid_amount) as total'))
+            ->whereBetween('created_at', [$startQuery, $endQuery])
+            ->whereNotNull('metode_pembayaran')
+            ->groupBy('metode_pembayaran')
+            ->pluck('total', 'metode_pembayaran')
+            ->toArray();
+
+        $tunai = $paymentBreakdown['Tunai'] ?? 0;
+        $transfer = $paymentBreakdown['Transfer'] ?? $paymentBreakdown['transfer'] ?? 0;
+        $qris = $paymentBreakdown['QRIS'] ?? $paymentBreakdown['qris'] ?? 0;
+
         // === C. LIST ORDER ===
         $recentOrders = Order::with('customer')
             ->whereBetween('created_at', [$startQuery, $endQuery])
@@ -110,9 +122,9 @@ class DashboardController extends Controller
 
         // Mengirim data ke View Dashboard
         return view('owner.dashboard', compact(
-            'pendapatanPeriode', // Variabel baru
-            'customerPeriode',   // Variabel baru
-            'barangMasukPeriode',// Variabel baru
+            'pendapatanPeriode',
+            'customerPeriode',   
+            'barangMasukPeriode',
             'incomeMonth',
             'incomeYear',
             'chartLabels',
@@ -120,7 +132,10 @@ class DashboardController extends Controller
             'recentOrders',
             'startDate',
             'endDate',
-            'filterType'
+            'filterType',
+            'tunai',
+            'transfer', 
+            'qris'
         ))
         ->with('labels', $chartLabels)
         ->with('data', $chartValues)
