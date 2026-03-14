@@ -457,7 +457,7 @@ $totalPointsNeeded = ($qtyDiskon + $qtyParfum) * 8;
 
             if ($customer->member) {
                 $customer->member->increment('total_transaksi', $subtotalItem);
-$poinBaru = floor($finalTotal / 50000);
+$poinBaru = round($finalTotal / 50000, 2);
 
                 if ($poinBaru > 0) {
                     $customer->member->increment('poin', $poinBaru);

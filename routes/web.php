@@ -21,8 +21,11 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// Semua route di dalam grup ini WAJIB Login dulu
-Route::middleware(['auth', 'verified'])->group(function () {
+// === GEOLOCATION VERIFICATION (Baru) ===
+Route::post('/verify-location', [App\Http\Controllers\GeoController::class, 'verifyLocation'])->name('geo.verify');
+
+// Semua route di dalam grup ini WAJIB Login dulu (GEO PROTECTION)
+Route::middleware(['auth', 'verified', 'geo.location'])->group(function () {
 
     Route::get('/dashboard', function () {
         // Jika owner nyasar ke sini, lempar ke dashboard owner

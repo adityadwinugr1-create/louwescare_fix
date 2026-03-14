@@ -11,6 +11,10 @@ class PointHistory extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'amount' => 'decimal:2',
+    ];
+
     public function member()
     {
         return $this->belongsTo(Member::class);

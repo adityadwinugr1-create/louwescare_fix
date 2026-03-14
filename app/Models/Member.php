@@ -8,6 +8,10 @@ class Member extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'poin' => 'decimal:2',
+    ];
+
     public function customer()
     {
         return $this->belongsTo(Customer::class);
